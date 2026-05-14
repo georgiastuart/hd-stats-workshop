@@ -30,14 +30,13 @@ This pre-homework ensures everyone starts Day 1 with a shared foundation in hypo
 
 ### Reading
 
-Review the basics of hypothesis testing from your introductory statistics course or one of these free references:
+Review the basics of hypothesis testing from your introductory statistics course or from this free reference:
 
-- OpenIntro Statistics, Ch. 5: [openintro.org](https://www.openintro.org/book/os/)
-- *An Introduction to Statistical Learning*, Ch. 13 (Multiple Testing): [statlearning.com](https://www.statlearning.com/)
+- *Computational and Inferential Thinking* (Berkeley Data 8), Ch. 11 — [Testing Hypotheses](https://inferentialthinking.com/chapters/11/Testing_Hypotheses.html)
 
 ### Questions
 
-**Q1.1**: In your own words, define: (a) Null hypothesis ($H_0$), (b) Alternative hypothesis ($H_1$), (c) $p$-value, (d) Type I error, (e) Type II error.
+**Q1.1**: In your own words, define: (a) Null hypothesis ($H_0$), (b) Alternative hypothesis ($H_1$), (c) $p$-value, (d) **False positive** — rejecting $H_0$ when $H_0$ is actually true (also called a *Type I error*), (e) **False negative** — failing to reject $H_0$ when $H_1$ is actually true (also called a *Type II error*).
 
 **Q1.2**: A researcher tests whether a new drug reduces blood pressure. They report $p = 0.03$.
 
@@ -45,7 +44,7 @@ Review the basics of hypothesis testing from your introductory statistics course
 (b) At significance level $\alpha = 0.05$, do they reject $H_0$?
 (c) The $p$-value is NOT the probability that $H_0$ is true. Explain why not, in one or two sentences.
 
-**Q1.3**: If you perform a test at $\alpha = 0.05$ and the null hypothesis is actually true, what is the probability of a Type I error? If you perform 20 such independent tests (all with true nulls), what is the probability of getting at least one Type I error?
+**Q1.3**: If you perform a test at $\alpha = 0.05$ and the null hypothesis is actually true, what is the probability of a **false positive**? If you perform 20 such independent tests (all with true nulls), what is the probability of getting at least one false positive?
 
 *Hint*: $P(\text{at least one}) = 1 - P(\text{none}) = 1 - (1 - 0.05)^{20}$.
 
