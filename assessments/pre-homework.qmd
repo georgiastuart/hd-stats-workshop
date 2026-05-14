@@ -68,7 +68,7 @@ Imagine you are a genomics researcher. You have gene expression data for 10,000 
 
 ### Exercise: Test the AI on something you know
 
-**Q3.1**: Ask the university AI platform (or Claude/ChatGPT) the following question:
+**Q3.1**: Ask the [UMass campus GenAI platform](https://www.umass.edu/it/genai/platform) (or Claude/ChatGPT) the following question:
 
 > "What is a $p$-value? Explain it in two sentences."
 
@@ -171,7 +171,7 @@ for pkg in packages:
         print(f"{pkg} MISSING — install with: pip install {install_name}")
 ```
 
-Also verify you have access to the **university AI platform** and can paste code into it and receive responses.
+Also verify you have access to the [**UMass campus GenAI platform**](https://www.umass.edu/it/genai/platform) and can paste code into it and receive responses.
 
 ---
 
