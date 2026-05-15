@@ -76,18 +76,6 @@ That's what this lecture is about. Not the serotonin gene specifically, but the 
 
 ---
 
-## {.centered}
-
-::: {style="font-size: 2em; margin-top: 2em;"}
-How does a false positive survive for **fifteen years**?
-:::
-
-::: {.notes}
-Pause here. Let the question hang. Then: "We're going to see this problem firsthand, using a real dataset that we'll work with for the rest of the workshop. And we'll start building the diagnostic tools to catch it."
-:::
-
----
-
 # The Golub Dataset {.centered}
 
 ::: {.notes}
@@ -118,12 +106,6 @@ In 1999, Todd Golub and colleagues published a landmark paper in Science showing
 | **Ratio p/n** | ~42 |
 :::
 
-. . .
-
-::: {style="font-size: 1.3em; margin-top: 1em;"}
-More variables than observations. **42× more.**
-:::
-
 ::: {.notes}
 The 72 patients fall into two groups: 47 with ALL and 25 with AML. These are different types of leukemia — they have different prognoses, different treatment responses, different biology. The question is: which genes are expressed differently between the two types?
 
@@ -138,12 +120,6 @@ So you do what anyone would do. You take each gene, one at a time, and ask: is t
 
 ::: {style="font-size: 2em;"}
 $$3{,}051 \times 0.05 = 153$$
-:::
-
-. . .
-
-::: {style="font-size: 1.3em; margin-top: 1em;"}
-**153 "significant" genes from pure noise.**
 :::
 
 ::: {.notes}
@@ -243,12 +219,6 @@ Don't explain yet. Ask the audience: "What do you see?" Let them describe it —
 
 3. **Is your analysis trustworthy?** Flat part should be flat. If not, something is wrong.
 
-:::
-
-. . .
-
-::: {style="font-size: 1.2em; margin-top: 1em;"}
-> Plot the histogram before you do anything else.
 :::
 
 ::: {.notes}
@@ -387,12 +357,6 @@ I'm telling you the salmon story because it's memorable and because it makes the
 | Bonferroni | A handful | Most real signal missed |
 :::
 
-. . .
-
-::: {style="font-size: 1.3em; margin-top: 1em;"}
-You need a different question.
-:::
-
 ::: {.notes}
 You need a different question. Not "did I make any false positives?" but "what fraction of my discoveries are false?" That question has an answer, and it's the subject of Lecture 2. But before we get there, I want to show you what happens when people skip the correction entirely.
 :::
@@ -507,12 +471,6 @@ None of this required bad intentions. The researchers who studied 5-HTTLPR were,
 
 :::
 
-. . .
-
-::: {style="font-size: 1.2em; margin-top: 1em;"}
-Same biology. Different statistical framework. **Different results.**
-:::
-
 ::: {.notes}
 Meanwhile, a parallel approach had been yielding real results. Genome-wide association studies, which test hundreds of thousands or millions of genetic variants and apply stringent multiple testing correction — that 5 × 10⁻⁸ threshold — had been steadily finding genetic loci associated with depression. By 2019, GWAS had identified over 100 loci. These weren't the same genes that the candidate gene studies had focused on. The two approaches — one without proper correction, one with — were studying the same biology and getting completely different answers.
 
@@ -521,22 +479,12 @@ The fix was known the entire time. GWAS adopted it from the beginning: test ever
 
 ---
 
-## {.centered}
+## Closing
 
-::: {style="font-size: 1.5em; margin-top: 3em;"}
-The 5-HTTLPR story isn't a story about bad scientists.
+The 5-HTTLPR episode is not a story about poor scientists. It is a story about what occurs when a field's statistical framework is not commensurate with the scale of its inquiry. The framework adequate to that scale exists, and Lecture 2 develops it.
 
-. . .
-
-It's a story about what happens when a field's statistical framework doesn't match the scale of its questions.
-
-. . .
-
-The framework exists.
-
-That's what we'll build in Lecture 2.
-:::
+The accompanying lab applies the procedures of this lecture to the Golub dataset: 3,051 tests, the diagnostic histogram, the Bonferroni threshold, and an explicit comparison between controlling any error and supporting useful inference. That comparison is the territory occupied by the false discovery rate.
 
 ::: {.notes}
-The 5-HTTLPR story isn't a story about bad scientists. It's a story about what happens when a field's statistical framework doesn't match the scale of its questions. The framework to handle that scale exists — it's what we'll build in Lecture 2. But first, in the lab, you're going to see it for yourself. You'll take the Golub dataset, run those 3,051 tests, plot the histogram, apply Bonferroni, and feel the gap between "controls any error" and "gives you a useful answer." That gap is where the false discovery rate lives.
+Mirrors the close of the essay. No reveals; deliver as a single read-through, then transition into the lab.
 :::
