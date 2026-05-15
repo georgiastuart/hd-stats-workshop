@@ -14,64 +14,159 @@ format:
     math: mathjax
 ---
 
-## {background-color="black" .centered}
+```{=html}
+<style>
+.reveal .slides { font-size: 0.78em; }
+.reveal h1, .reveal h2 { font-size: 1.5em; }
+.reveal table { font-size: 0.9em; }
+.reveal blockquote { font-size: 0.95em; }
+</style>
+```
 
-![](images/caspi-2003-title.png){fig-alt="Title page of Caspi et al. 2003, Science" width="85%"}
+## Caspi 2003: a single gene moderating stress-induced depression
+
+:::: {.columns}
+::: {.column width="55%"}
+![](images/caspi-2003-title.png){fig-alt="Title page of Caspi et al. 2003, Science: 'Influence of life stress on depression: moderation by a polymorphism in the 5-HTT gene'" width="100%"}
+:::
+::: {.column width="45%"}
+**The proposal**
+
+A variant in the serotonin transporter gene (5-HTTLPR, in the promoter region of *SLC6A4*) moderates how individuals respond to stressful life events.
+
+**The mechanism, as advanced**
+
+- "Short" allele → less transporter protein → reduced serotonin uptake
+- Carriers of the short allele are more vulnerable to stress-induced depression
+- "Long" allele carriers are protected
+
+**Why it captured the field**
+
+A simple, biologically plausible nature × nurture story: a single locus that determines who breaks under adversity.
+:::
+::::
 
 ::: {.notes}
-In 2003, Avshalom Caspi and a team of researchers published a paper in Science that would become one of the most influential findings in psychiatric genetics. They reported that a variant in the serotonin transporter gene — a gene called 5-HTTLPR — predicted whether people who experienced stressful life events would develop depression. The idea was elegant: some people carry a version of this gene that produces less serotonin transporter protein, and those people, when exposed to stress, are more vulnerable to depression. Nature plus nurture, mediated by a single gene.
+Caspi et al. (2003) appeared in *Science* and proposed a gene-by-environment interaction. The hypothesis was clean — a specific, mechanistically plausible polymorphism that connects a known neurotransmitter system to a complex psychiatric phenotype. We will see in the next slide why this finding, despite being elegant, did not survive replication.
 :::
 
 ---
 
-## {background-color="black" .centered}
+## The claim: stress matters only for short-allele carriers
 
-![](images/caspi-2003-fig2.png){fig-alt="Caspi et al. 2003 Figure 2: gene-environment interaction" width="80%"}
+:::: {.columns}
+::: {.column width="55%"}
+![](images/caspi-2003-fig2.png){fig-alt="Caspi et al. 2003 Figure 2: probability of major depression episode versus maltreatment, stratified by 5-HTTLPR genotype (s/s, s/l, l/l)" width="100%"}
+:::
+::: {.column width="45%"}
+**How to read the figure**
+
+- x-axis: maltreatment severity in childhood
+- y-axis: probability of a major depression episode
+- Three lines: one per 5-HTTLPR genotype
+
+**s/s** (two short alleles): probability rises from ~0.30 to ~0.63 with maltreatment.
+
+**l/l** (two long alleles): essentially flat near 0.30.
+
+The gene appears to *moderate* the effect of stress: only short-allele carriers respond to maltreatment with elevated depression risk.
+:::
+::::
 
 ::: {.notes}
-This is the key figure. The interaction looks clean — the short allele carriers show more depression under stress, the long allele carriers are protected. The paper was cited over 8,000 times. To put that in perspective, a typical well-cited paper in genetics gets maybe 200 citations. A famous one gets 1,000. 8,000 is a field-defining result. It launched an entire subfield. Hundreds of labs tried to replicate and extend the finding. Graduate students built dissertations around it. Textbooks cited it as a model of gene-environment interaction. If you took a psychology or genetics course between 2005 and 2015, you probably heard about it.
+This is the key figure of Caspi 2003. A single longitudinal cohort (Dunedin, New Zealand, ~847 individuals followed from birth), genotyped at the serotonin transporter promoter. The claim is gene-by-environment interaction: the s/s and s/l carriers are stress-sensitive; the l/l carriers are protected.
+
+The paper was cited over 8,000 times — a well-cited paper in genetics typically gets a few hundred citations, a famous one gets 1,000. 8,000 marks a field-defining result. It launched a subfield, anchored textbooks, and shaped 15 years of follow-on research.
+
+Hold this picture in mind; Border et al. (2019) tested the same claim in samples 100× larger, and the result will not survive.
 :::
 
 ---
 
-## 8,000 citations {.centered}
+## A field-defining finding — and an inconsistent replication record
 
-::: {style="font-size: 1.5em; margin-top: 2em;"}
-**2003–2018**: Hundreds of replication attempts
+:::: {.columns}
+::: {.column width="50%"}
+**Citations (2003–2025)**
 
-Some positive. Some negative. Some null.
+| Paper | Citations |
+|---|---:|
+| Typical human-genetics paper | ~200 |
+| Famous landmark | ~1,000 |
+| Caspi et al. 2003 | **>8,000** |
 
-Meta-analyses disagreed with each other.
+Eight thousand citations marks a field-defining result — the kind that anchors textbooks and launches subfields.
 :::
+::: {.column width="50%"}
+**Replication attempts, 2003–2018**
+
+Hundreds of studies attempted to reproduce the 5-HTTLPR × stress interaction.
+
+- **Some** reported the same direction of effect.
+- **Some** reported the opposite direction.
+- **Some** found no effect at all.
+- Meta-analyses **disagreed with each other** depending on which studies they included.
+
+This pattern is itself a diagnostic. When an effect is real, replications converge on a direction and approximate size. Disagreement across the literature is what *noise* looks like.
+:::
+::::
 
 ::: {.notes}
-Over the next fifteen years, hundreds of studies tried to replicate or extend the result. Some found the same thing. Some found the opposite. Some found nothing. Meta-analyses — studies that combine the results of many studies — disagreed with each other, depending on which studies they included and how they weighted them. This should have been a red flag. When a real effect exists, replications generally agree on its direction and approximate size. When studies disagree about whether an effect is positive, negative, or zero, that's what noise looks like. But the field had reasons to keep believing. The biology was plausible — serotonin is genuinely involved in mood regulation. The original study was well-designed by the standards of its time.
+The point of this slide: a finding cited 8,000 times nevertheless produced 15 years of contradictory replications. Citations measure influence, not truth. A heavy citation count means the result entered the textbooks; it does not mean the result was correct. The replication pattern — positive, negative, and null in roughly equal measure — was visible the whole time and should have been read as evidence against the original claim. The field nevertheless continued to interpret ambiguous evidence in its favor: the biology was plausible, the original study was well-designed by the standards of its era, and a sufficient number of "confirmatory" replications kept the hypothesis alive.
 :::
 
 ---
 
-## {background-color="black" .centered}
+## Sixteen years later: a definitive test of 18 candidate genes
 
-![](images/border-2019-title.png){fig-alt="Title page of Border et al. 2019, AJPSYCH" width="85%"}
+:::: {.columns}
+::: {.column width="55%"}
+![](images/border-2019-title.png){fig-alt="Title page of Border et al. 2019, American Journal of Psychiatry" width="100%"}
+:::
+::: {.column width="45%"}
+Border et al. (2019) retested the 5-HTTLPR hypothesis — and **17 other historical "candidate gene" hypotheses** for depression — in samples ranging from 62,000 to 443,000 individuals.
+
+Preregistered analysis plan. Same outcomes, same statistical approaches as the original studies. Only the sample size differed: roughly 100× larger.
+
+> "No clear evidence was found for any candidate gene polymorphism associations with depression phenotypes or any polymorphism-by-environment moderator effects."
+
+— Abstract, Border et al. 2019
+:::
+::::
 
 ::: {.notes}
-In 2019, a team led by Richard Border tested the 5-HTTLPR hypothesis — along with 17 other "candidate gene" hypotheses for depression — in samples ranging from 62,000 to 443,000 people. They had preregistered their analysis plan. They used the same measures and the same statistical approaches that the original studies had used, just with vastly more data.
-
-They found nothing. Not "a smaller effect than expected." Nothing. The serotonin transporter variant had no detectable relationship to depression, with or without stress. Neither did any of the other 17 candidate genes.
+The Caspi 2003 paper started a wave: dozens of "candidate genes" were proposed for depression, each based on small studies that found significant effects. Border 2019 was the definitive replication attempt, designed specifically to revisit this entire literature with adequate statistical power.
 :::
 
 ---
 
-## {background-color="black" .centered}
+## All 18 genes — including the Caspi gene — fall below significance
 
-![](images/border-2019-fig.png){fig-alt="Border et al. 2019: null results across 18 candidate genes" width="80%"}
+:::: {.columns}
+::: {.column width="62%"}
+![](images/border-2019-fig.png){fig-alt="Border et al. 2019 Figure 3: gene-wise -log10(p) values for 18 candidate genes plotted by chromosome; none exceed the genome-wide significance threshold of 2.61e-6" width="100%"}
+:::
+::: {.column width="38%"}
+**Reading the plot**
+
+- Each point: one variant in one gene
+- y-axis: $-\log_{10}(p)$ — bigger means stronger evidence
+- Dashed line: significance threshold
+
+**SLC6A4 is 5-HTTLPR** — the Caspi gene. Same finding to test, vastly more data.
+
+**None of the 18 candidate genes** crosses the genome-wide threshold. (One marginal hit, DRD2 in a sub-sample, did not replicate in UK Biobank — see paper.)
+
+The 5-HTTLPR effect was not "smaller than originally reported." It was absent.
+:::
+::::
 
 ::: {.notes}
-This is the figure. Eighteen candidate genes. Zero replication. The entire candidate gene literature for depression was, in effect, noise.
+This is the figure. Eighteen candidate genes. Zero replication. Make the SLC6A4 = 5-HTTLPR equivalence explicit if it hasn't already landed — SLC6A4 is the gene name; 5-HTTLPR is the polymorphism in its promoter region. Same locus, different naming convention.
 
-How does a false positive survive for fifteen years? The short answer is: it wasn't one false positive. It was thousands of them, across hundreds of studies, in a field that was running many statistical tests without accounting for how many tests it was running. And the tools to prevent this — to control the rate of false discovery when you're testing many hypotheses — existed the entire time. The field just wasn't using them.
+The dashed line at $\alpha = 2.61 \times 10^{-6}$ is the Bonferroni-style correction for the 18 candidate genes' tagging set after accounting for linkage disequilibrium. The genome-wide convention is $5 \times 10^{-8}$, which is even stricter; we will return to it.
 
-That's what this lecture is about. Not the serotonin gene specifically, but the general problem: what happens when you test many hypotheses, and what it looks like when you don't account for it.
+Don't yet explain the mechanisms — just establish the empirical fact: when the test was rerun at scale, with preregistration and adequate power, none of the historical candidate-gene claims for depression held up. The rest of the lecture builds the framework for why this is the expected outcome when many small studies are run without proper multiple-testing correction.
 :::
 
 ---
@@ -84,12 +179,31 @@ Shift gears. "Let's start with a dataset."
 
 ---
 
-## {background-color="black" .centered}
+## Golub 1999: the workshop's running example
 
-![](images/golub-1999-title.png){fig-alt="Golub et al. 1999, Science — molecular classification of cancer" width="85%"}
+:::: {.columns}
+::: {.column width="55%"}
+![](images/golub-1999-title.png){fig-alt="Golub et al. 1999, Science: 'Molecular classification of cancer: class discovery and class prediction by gene expression monitoring'" width="100%"}
+:::
+::: {.column width="45%"}
+**The claim**
+
+Gene expression alone — not morphology, not cytochemistry — can distinguish two leukemias: **ALL** (acute lymphoblastic) and **AML** (acute myeloid).
+
+**The technology**
+
+DNA microarrays measure the expression of thousands of genes per patient simultaneously. After preprocessing, the released dataset reports **3,051 genes per patient**.
+
+**Why it matters here**
+
+- One of the first public datasets where $p \gg n$ (many genes, few patients).
+- Drives the rest of the workshop — every lab and several lectures revisit it.
+- The same statistical problem that broke 5-HTTLPR appears immediately on this dataset.
+:::
+::::
 
 ::: {.notes}
-In 1999, Todd Golub and colleagues published a landmark paper in Science showing that gene expression patterns alone could distinguish between two types of leukemia: acute lymphoblastic leukemia (ALL) and acute myeloid leukemia (AML). Each patient's tumor was profiled using a microarray — a technology that measures the expression level of thousands of genes simultaneously. In this case, 3,051 genes per patient after preprocessing. This is the dataset we'll work with for the rest of the workshop.
+Golub et al. (1999) is, in many ways, the founding example of the kind of dataset this workshop is about. It introduced the genomics community to high-dimensional inference at scale: thousands of variables, dozens of samples, and a clear scientific question (can expression patterns classify cancer subtypes?). It is also small enough that students can run every procedure in this workshop on a laptop in seconds.
 :::
 
 ---
@@ -116,22 +230,38 @@ So you do what anyone would do. You take each gene, one at a time, and ask: is t
 
 ---
 
-## {.centered}
+## Under the global null, 153 "discoveries" are expected by chance
 
-::: {style="font-size: 2em;"}
-$$3{,}051 \times 0.05 = 153$$
+:::: {.columns}
+::: {.column width="40%"}
+::: {style="font-size: 1.6em; text-align: center; margin-top: 1em;"}
+$$3{,}051 \times 0.05$$
+
+$$= 153$$
 :::
+:::
+::: {.column width="60%"}
+**The setup**
+
+- Run one $t$-test per gene on the Golub data: 3,051 tests.
+- A $p$-value of 0.05 means: under $H_0$ (no difference between ALL and AML for *this* gene), there is a 5% chance of obtaining a test statistic at least as extreme as the observed one.
+
+**The thought experiment**
+
+Imagine for a moment that *no* gene actually differs between ALL and AML. Each test independently has a 5% chance of crossing $p < 0.05$ purely by chance.
+
+$$\text{Expected false positives} = m \cdot \alpha = 3{,}051 \times 0.05 \approx 153.$$
+
+**The trap**
+
+The per-test error rate is still 5%. The *count* of false positives, however, is 153 — a long list that visually resembles a discovery.
+
+A biologist scanning the output sees genes, not rates.
+:::
+::::
 
 ::: {.notes}
-Here's the thing about p-values that everyone learns in their first statistics course and then immediately forgets the implications of: a p-value of 0.05 means that if the gene is not differentially expressed — if there is truly no difference between ALL and AML — there's still a 5% chance of getting a test statistic this extreme or more extreme, just by chance. That's fine for one test. You accept a 5% false positive rate as the cost of doing business.
-
-But you're not running one test. You're running 3,051.
-
-If none of the genes were actually different between ALL and AML — if the two types were molecularly identical, which they're not, but bear with me — you'd still expect about 5% of your tests to come back significant at the 0.05 level. Five percent of 3,051 is 153. You'd get 153 "significant" results from pure noise.
-
-The false positive rate is still 5%. The false positive count is 153. And if you're a biologist looking at your results, you don't see a rate — you see a list of genes. A long list. A list that looks like you've discovered something.
-
-This is the multiple testing problem. It's not subtle. The math is first-semester probability. And yet it fooled an entire field of psychiatric genetics for fifteen years.
+This is the multiple testing problem in one line of arithmetic. The mathematics is first-semester probability; what is non-obvious is how a 5% per-test error rate translates into a list of 153 "significant" findings that look like science. The Golub data isn't actually pure noise — many genes truly differ between ALL and AML — but the same arithmetic still applies to whatever fraction of the genome is null. The same logic broke 5-HTTLPR: a literature of small studies, each appearing to be a single test, was in aggregate an enormous number of implicit tests at an unadjusted 5% per-test rate.
 :::
 
 ---
@@ -257,16 +387,46 @@ That second line is the key idea. The height of the flat tail is not just descri
 
 ---
 
-## Bonferroni correction
+## Bonferroni: divide the per-test threshold by $m$
 
-::: {style="font-size: 1.8em; text-align: center; margin-top: 1.5em;"}
-$$\frac{0.05}{3{,}051} \approx 1.6 \times 10^{-5}$$
+:::: {.columns}
+::: {.column width="45%"}
+**The correction**
+
+::: {style="font-size: 1.4em; text-align: center; margin-top: 0.5em;"}
+$$p < \frac{\alpha}{m} = \frac{0.05}{3{,}051}$$
+
+$$\approx 1.6 \times 10^{-5}$$
 :::
 
-. . .
+By the union bound,
 
-::: {style="font-size: 1.2em; text-align: center; margin-top: 1em;"}
-Controls the **family-wise error rate**: P(any false positive) ≤ 0.05
+$$P(\text{at least one FP}) \leq m \cdot \frac{\alpha}{m} = \alpha.$$
+:::
+::: {.column width="55%"}
+**What it controls**
+
+The **family-wise error rate (FWER)**: the probability of *any* false positive across the entire family of tests.
+
+$$\text{FWER} = P(\text{any false positive}) \leq 0.05.$$
+
+**When it's the right tool**
+
+- Astronomy "5σ" detection: per-test error rate $\sim 1/3{,}500{,}000$. One false discovery would mis-announce a physical law.
+- GWAS: $5 \times 10^{-8}$ threshold across $\sim$1 million SNPs — Bonferroni at genome-wide scale.
+
+**Strengths**
+
+- No assumption about the dependence structure among tests.
+- Works at any scale, from 10 to 10⁶ hypotheses.
+- Easy to communicate and reproduce.
+:::
+::::
+
+::: {.notes}
+Bonferroni is the simplest possible correction: divide your significance level by the number of tests. The math is the union bound applied to $m$ events, each with probability at most $\alpha/m$. It is conservative — it does not require independence — and it works for any $m$. In the next slide we will see *what* it costs: the threshold becomes so stringent that most real signal is rejected.
+
+The genome-wide threshold $5 \times 10^{-8}$ is essentially Bonferroni at the million-SNP scale, refined for linkage disequilibrium. Caspi's 5-HTTLPR study did not face Bonferroni at this scale — it was framed as a single-test confirmation of a *specific* hypothesis. The pathology described in this lecture comes from the candidate-gene literature treating each study as a single test, while the field collectively ran thousands of implicit tests.
 :::
 
 ::: {.notes}
@@ -318,32 +478,58 @@ Bonferroni can't give you that list. It's trying to prevent a different kind of 
 
 ---
 
-## {background-color="black" .centered}
+## A deliberate demonstration: fMRI on a dead Atlantic salmon
 
-![](images/dead-salmon-poster.png){fig-alt="Bennett et al. 2009 — dead salmon fMRI poster" width="80%"}
+:::: {.columns}
+::: {.column width="55%"}
+![](images/dead-salmon-poster.png){fig-alt="Bennett, Miller and Wolford 2009 HBM conference poster: 'Neural correlates of interspecies perspective taking in the post-mortem Atlantic salmon'" width="100%"}
+:::
+::: {.column width="45%"}
+**The experiment** (Bennett et al., HBM 2009)
+
+A dead Atlantic salmon was placed in an fMRI scanner and "shown" photographs of humans in social situations. A standard fMRI analysis pipeline tested ~130,000 voxels for signal change in response to the stimuli.
+
+**Why this matters**
+
+Every fMRI analysis tests tens of thousands of voxels — the exact analogue of testing thousands of genes. The multiple-testing problem is structurally identical to the one in the Golub data.
+
+**The companion survey**
+
+Bennett et al. (2009) also surveyed published fMRI studies: **25–40% did not report any correction** for multiple comparisons. The poster was memorable; the survey was a serious indictment.
+:::
+::::
 
 ::: {.notes}
-In 2009, a neuroscientist named Craig Bennett and his colleagues put a dead Atlantic salmon in an fMRI scanner. It was purchased at a local fish market. It was, by all accounts, very dead.
-
-They showed the salmon a series of photographs of people in social situations and asked it — well, they ran the standard fMRI analysis pipeline — to determine the emotional valence of each photograph. The scanner measured blood oxygenation levels across thousands of tiny volume elements, called voxels, in the salmon's body. For each voxel, a statistical test asked: does the signal in this voxel change in response to the photographs?
-
-Without any correction for multiple comparisons, a cluster of voxels in the salmon's brain cavity showed statistically significant "neural activity." The dead fish appeared to be processing human emotions.
-
-With a standard correction for multiple comparisons, the signal disappeared. Because of course it did — the salmon was dead.
+The poster was presented at the Human Brain Mapping (HBM) 2009 conference and later published in the *Journal of Serendipitous and Unexpected Results* (2010). It was deliberate satire — a control experiment that everyone knew should produce nothing — designed to show why uncorrected statistics are dangerous in a high-dimensional setting. Use this to make the multiple-testing problem visceral: nobody believes the salmon is thinking, so the false positive is unambiguous.
 :::
 
 ---
 
-## {background-color="black" .centered}
+## Without correction, "significant activity" in the dead salmon's brain
 
-![](images/dead-salmon-activation.png){fig-alt="Dead salmon fMRI showing spurious activation without correction" width="75%"}
+:::: {.columns}
+::: {.column width="55%"}
+![](images/dead-salmon-activation.png){fig-alt="Bennett et al. 2010 Figure 1: sagittal and axial fMRI slices of a post-mortem Atlantic salmon showing red activation voxels in the brain cavity and spinal column when no multiple-testing correction is applied" width="100%"}
+:::
+::: {.column width="45%"}
+**Reading the image**
+
+- Sagittal (left) and axial (right) slices through the salmon's head.
+- Red voxels: "significant" task-related signal at $p < 0.001$ uncorrected, 3-voxel extent threshold.
+- Color scale: $t$-statistic from 2.5 to 4.5.
+
+**With correction**
+
+Apply Bonferroni or FDR — at FWER $= 0.05$ or even FDR $= 0.25$ — and the apparent signal **disappears completely**. No voxels survive.
+
+**The takeaway**
+
+Uncorrected thresholds plus high-dimensional measurement equals false-positive clusters with arbitrary spatial structure. The salmon could not possibly have brain activity; the procedure produces "activity" anyway.
+:::
+::::
 
 ::: {.notes}
-This is the figure. The colored blobs are "statistically significant" voxels in the dead salmon's brain cavity. Without correction, the salmon is thinking about human emotions. With correction, it's a dead fish.
-
-Bennett presented this as a poster at a conference, and it became widely circulated, partly for its memorable framing and partly because it made a serious point: every fMRI analysis involves thousands of voxels, each tested independently, and the multiple testing problem is the same as in genomics. Bennett surveyed published fMRI studies and found that between 25% and 40% did not report correcting for multiple comparisons. The poster was memorable. The survey was concerning.
-
-I'm telling you the salmon story because it's memorable and because it makes the multiple testing problem feel visceral in a way that abstract calculations don't. But the salmon was caught quickly — it was a deliberate demonstration. The next story is about what happens when false positives aren't caught at all.
+This figure is the punchline. The red dots are statistically significant at conventional uncorrected thresholds; with appropriate multiple-testing correction the dataset reverts to its true state (a dead fish). Bennett presented this as a memorable cautionary tale for the fMRI community. The salmon was caught immediately because the experimental setup made the false positive impossible to ignore. The 5-HTTLPR story is the salmon caught fifteen years late, in a domain where nobody could tell the dead fish from a live human's biology.
 :::
 
 ---
