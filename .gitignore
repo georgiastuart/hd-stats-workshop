@@ -17,6 +17,9 @@ __pycache__/
 # Claude Code internals (never commit)
 .claude/
 
+# Source papers archived locally for instructor reference (copyrighted; do not redistribute)
+resources/
+
 # Quarto intermediates (sometimes land in source dir)
 *.quarto_ipynb
 *.quarto_ipynb_1

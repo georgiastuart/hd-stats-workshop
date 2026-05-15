@@ -1,7 +1,7 @@
 ---
 title: "The Gene That Wasn't There"
 subtitle: "Lecture 1"
-date: "Day 1, 9:00–10:00"
+date: "2026-05-15"
 format:
   revealjs:
     theme: default
@@ -267,12 +267,14 @@ We'll come back to this histogram in Lecture 2, where it turns from a diagnostic
 
 ## {.centered}
 
-![](images/pval-histogram-pathologies.png){fig-alt="Examples of well-behaved vs. pathological p-value histograms" width="90%"}
+![](images/pval-histogram-pathologies.png){fig-alt="Storey & Tibshirani (2003) Figure 1: p-value histogram from the Hedenfalk breast cancer dataset; dashed line at the uniform-null density, dotted line at the estimated null proportion" width="65%"}
 
 ::: {.notes}
-[PLACEHOLDER — create a 2×2 panel showing: (1) well-behaved with signal, (2) all null/uniform, (3) anti-conservative (too many small p-values, inflated null), (4) conservative (dip near zero). Label each panel clearly.]
+This is the canonical version of the diagnostic, from Storey & Tibshirani (2003). The histogram is the 3,170 p-values from the Hedenfalk breast cancer dataset — a different experiment from Golub, but the same shape: a spike near zero, then a roughly flat tail.
 
-These are the shapes you'll learn to recognize. Top left is what we just saw — signal plus a well-behaved null. Top right is all null — flat, no detectable signal. Bottom left is anti-conservative — the null is inflated, indicating a problem with the analysis, often batch effects or unaddressed confounders. Bottom right is conservative — the test is overly cautious, possibly because the test statistic is discrete. In every case, the histogram tells you what to do before you run any correction.
+Two reference lines. The **dashed** line at height 1 is what you would see if all genes were null — p-values uniformly distributed, density equal to 1 in every bin. The **dotted** line, lower, is at the estimated density of the null genes — π₀ — which Storey and Tibshirani read directly off the flat region.
+
+That second line is the key idea. The height of the flat tail is not just descriptive — it estimates the proportion of true nulls in the experiment, and that proportion is what makes the false discovery rate computable. We will use this in Lecture 2 to construct q-values. For now, just internalize the picture: spike + flat, with the flat region at some height below 1. That height is π₀, and π₀ is the difference between Bonferroni and BH.
 :::
 
 ---

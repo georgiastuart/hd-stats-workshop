@@ -1,7 +1,7 @@
 ---
 title: "Lecture 1: The Gene That Wasn't There"
 subtitle: "How False Positives Survive — and How a Histogram Catches Them"
-date: "Day 1, 9:00–10:00"
+date: "2026-05-15"
 format:
   html:
     toc: true
