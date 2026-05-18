@@ -24,15 +24,17 @@ This page is the readable web reference.
 
 This homework consolidates Day 1 material and bridges to Day 2. It maps onto the Day-1 structure:
 
-- **Q1 — Multiple Testing Concepts (LO1)**. Exercises **Lecture 1** (hypothesis testing: Bonferroni / FWER, BH / FDR, $q$-values).
-- **Q2 — FDR in Practice (LO1, LO3)**. Connects both Day-1 lectures: BH-adjusted $p$-values from **Lecture 1**; `limma`'s empirical-Bayes variance shrinkage and $\hat\pi_0$ estimation from **Lecture 2**.
-- **Q3 — Evaluating Analysis Output (LO3)**. Exercises the critical-evaluation thread from both lectures and from Labs 1 and 2.
+- **Q1 — Multiple Testing Concepts (LO1, LO3)**. Exercises **Lecture 1** (hypothesis testing: Bonferroni / FWER, BH / FDR, $q$-values) and includes an **AI explanation + critique** exercise.
+- **Q2 — FDR in Practice (LO1, LO3)**. Connects both Day-1 lectures: BH-adjusted $p$-values from **Lecture 1**; `limma`'s empirical-Bayes variance shrinkage and $\hat\pi_0$ estimation from **Lecture 2**. **All three sub-parts ask you to use AI for code generation** and to critique what comes back.
+- **Q3 — Evaluating Analysis Output (LO3)**. Exercises the critical-evaluation thread from both lectures, with explicit **you-vs-AI comparison** exercises in writing specifications, debugging, and code review.
 
-You are welcome to use AI for coding tasks, but the conceptual and interpretation questions must reflect your own understanding.
+**AI integration is required.** Every question has at least one sub-part where you direct an AI assistant, paste its output, and evaluate it against named criteria. Use any of: the [UMass campus GenAI platform](https://www.umass.edu/it/genai/platform), Claude, ChatGPT, or another assistant of your choice. Note which AI you used for each prompt — different models behave differently, and the differences are themselves part of the lesson.
+
+Conceptual and interpretation questions must reflect your own understanding. The "AI's response" sections record what the AI produced; the surrounding critique cells record *your* evaluation of it.
 
 ---
 
-## Q1: Multiple Testing Concepts (LO1)
+## Q1: Multiple Testing Concepts (LO1, LO3)
 
 *Exercises Lecture 1 (Bonferroni / FWER and BH / FDR).*
 
@@ -46,33 +48,47 @@ A proteomics experiment measures the abundance of $p = 5{,}000$ proteins in $n =
 
 **(d)** Your collaborator says "We found 120 significant proteins." A reviewer replies "But 12 of those are probably false positives!" Is the reviewer being unreasonable? Explain.
 
+**(e) AI explanation + critique.** Ask an AI assistant the following prompt:
+
+> "Explain the difference between FWER (Bonferroni-style) and FDR (Benjamini–Hochberg-style) control to a wet-lab biologist who has never taken a statistics course. Use the analogy of finding stars in a noisy telescope image. Three short paragraphs at most."
+
+Paste the AI's response. Then critique it against five criteria: (i) Does it define both FWER and FDR correctly? (ii) Does it explain the key difference (*any* vs. *fraction*)? (iii) Does it pick the right context (FDR for genomic discovery)? (iv) Does it avoid the common error of saying "FDR is the probability that a finding is false"? (v) Is the star/telescope analogy accurate? Conclude with a one-sentence overall assessment: would you use this explanation when introducing the concept to a wet-lab collaborator?
+
 ---
 
 ## Q2: FDR in Practice (LO1, LO3)
 
-*Connects both Day-1 lectures: `limma`'s `eBayes` is the empirical-Bayes variance shrinkage from Lecture 2; BH adjustment and Storey's $\hat\pi_0$ are from Lecture 1.*
+*Connects both Day-1 lectures: `limma`'s `eBayes` is the empirical-Bayes variance shrinkage from Lecture 2; BH adjustment and Storey's $\hat\pi_0$ are from Lecture 1. All three sub-parts use AI to generate the R code; the critique sections check it.*
 
 Using the Golub dataset (introduced in Lecture 1 and used in Labs 1 and 2), perform the following analysis. You should use AI to write the R code, but evaluate its correctness and interpret the results yourself.
 
-**(a)** Direct an AI to compute BH-adjusted $p$-values for the ALL vs. AML comparison **using `limma`** (not raw $t$-tests). Report the number of genes significant at FDR $< 0.01$, $< 0.05$, $< 0.10$.
+**(a) BH-adjusted p-values via `limma`.** Direct an AI to compute BH-adjusted $p$-values for the ALL vs. AML comparison **using `limma`** (not raw $t$-tests). Report the number of genes significant at FDR $< 0.01$, $< 0.05$, $< 0.10$.
 
-Suggested prompt template (paste-ready, with R-specific format directive):
+Suggested prompt (paste-ready, with R-specific format directive):
 
 > "Reply with a single R code block (no prose, no .docx file — just runnable code I can paste into an R-kernel Colab cell). Using `limma` with empirical-Bayes variance shrinkage, fit the ALL vs. AML contrast on the Golub expression matrix `expr` (3,051 genes × 72 samples) using subtype labels from `meta`, extract BH-adjusted p-values from `topTable(..., adjust.method = 'BH', number = Inf)`, and print the number of genes with `adj.P.Val` below 0.01, 0.05, and 0.10."
 
 Include the prompt you used and note whether the AI spontaneously chose `limma` or whether you had to direct it.
 
-**(b)** Use the `qvalue` package to estimate $\hat{\pi}_0$. What does this estimate tell you about the dataset?
+**(b) Estimate $\hat\pi_0$ with `qvalue`.** Use the `qvalue` package to estimate $\hat{\pi}_0$. What does this estimate tell you about the dataset?
 
-**(c)** Make a $p$-value histogram. Annotate it: mark the region where you think the true alternatives are concentrated, and the region dominated by true nulls.
+Suggested prompt:
 
-Include your code (noting what was AI-generated vs. your own) and a one-paragraph interpretation.
+> "Reply with a single R code block (no prose, no .docx file). Given the vector of raw p-values `pvals` from limma's topTable on the Golub data, use `qvalue::qvalue(pvals)` to estimate pi_0. Print pi_0_hat with three decimal places and a one-line interpretation of what that value implies about the proportion of genes that are non-null. Do not invent or hallucinate numbers — only print what qvalue returns."
+
+**(c) Annotated p-value histogram.** Make a $p$-value histogram. Annotate it: mark the region where you think the true alternatives are concentrated, and the region dominated by true nulls.
+
+Suggested prompt:
+
+> "Reply with a single R code block (no prose, no .docx file). Given the vector of raw p-values `pvals` from limma's topTable on the Golub data and the qvalue-estimated `pi_0`, produce a `ggplot2` histogram of the p-values with 50 bins (density scaled), overlay a horizontal dashed reference line at the uniform-null density (height 1), overlay a horizontal dotted line at the estimated null-density height pi_0, and annotate two regions: a vertical band 0-0.1 labelled 'spike of true alternatives', and a vertical band 0.5-1.0 labelled 'roughly uniform null region.' Use clear axis labels and a title."
+
+For each of (a), (b), and (c): paste the AI's code, note any corrections you had to make, and include a one-paragraph interpretation of the results in your own words.
 
 ---
 
 ## Q3: Evaluating Analysis Output (LO3)
 
-*Exercises the critical-evaluation thread from both Day-1 lectures and labs.*
+*Exercises the critical-evaluation thread from both Day-1 lectures and labs. Three of the four sub-parts include explicit you-vs-AI comparisons.*
 
 **(a)** Write two specifications for the same analysis task: "Perform differential expression analysis on a microarray dataset comparing treatment and control groups."
 
@@ -87,9 +103,15 @@ Explain what makes Specification B better.
 
 Suggested AI prompt for follow-up (paste-ready, with R-specific format directive):
 
-> "Reply with a single R code block (no prose, no .docx file — just runnable code I can paste into an R-kernel Colab cell). Here is a snippet of analysis code: [paste your snippet]. Identify the most likely statistical error and write a corrected version of the snippet. If the original is correct, return the same code unchanged with a one-line comment confirming this."
+> "Reply with a single R code block (no prose, no .docx file). Here is a snippet of analysis code: [paste your snippet]. Identify the most likely statistical error and write a corrected version of the snippet. If the original is correct, return the same code unchanged with a one-line comment confirming this."
 
-**(d)** You receive a complete differential expression analysis from a collaborator. It uses raw $t$-tests with BH correction on a microarray dataset with 72 samples. Write a short review (3--4 sentences) describing what's adequate and what should be changed, and why. *(Hint: connect this to Lecture 2's argument that `limma`'s empirical-Bayes variance shrinkage is preferred over raw $t$-tests when $n$ is small. The [Decision Guide](../syllabus/decision-guide.qmd) summarizes the recommended methods.)*
+**(d) A short review — you vs. AI.** You receive a complete differential expression analysis from a collaborator. It uses raw $t$-tests with BH correction on a microarray dataset with 72 samples. Write a short review (3–4 sentences) describing what's adequate and what should be changed, and why. *(Hint: connect this to Lecture 2's argument that `limma`'s empirical-Bayes variance shrinkage is preferred over raw $t$-tests when $n$ is small. The [Decision Guide](../syllabus/decision-guide.qmd) summarizes the recommended methods.)*
+
+Now ask an AI for *its* review of the same scenario:
+
+> "Reply in three to four sentences only (no .docx file). A collaborator submitted a differential expression analysis on a microarray dataset with $n = 72$ samples using raw two-sample $t$-tests with Benjamini–Hochberg FDR correction. Write a brief critical review explaining what is adequate about this approach and what should be changed, and why."
+
+Compare your review to the AI's: what did the AI catch that you missed; what did you catch that the AI missed; did either raise false alarms; which review would you submit if you could only pick one?
 
 ---
 
