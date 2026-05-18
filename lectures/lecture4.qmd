@@ -1,7 +1,7 @@
 ---
 title: "Lecture 4: Seventy Genes and a Fraud"
-subtitle: "Penalized Regression, Validation, and the Limits of a Method"
-date: "Day 2, 10:00–11:00"
+subtitle: "Estimating Sparse Regression Coefficients in $p \\gg n$"
+date: "2026-05-16"
 format:
   html:
     toc: true
@@ -15,6 +15,12 @@ format:
     toc-depth: 2
     number-sections: false
     fig-pos: 'H'
+---
+
+## Orientation
+
+This lecture continues the estimation theme of Lectures 2 and 3, now applied to regression. The problem is to predict an outcome — a clinical phenotype, a treatment response, a disease subtype — from a vector of high-dimensional predictors with more features than observations ($p \gg n$). Ordinary least squares fails by construction in this regime: the system is underdetermined, the pseudoinverse selects a solution with no claim to generalize, and the training fit reflects degeneracy rather than biology. The remedy is *regularization* — adding a penalty term that prefers some coefficient vectors over others — and the three principal regularizers are ridge (an $\ell_2$ penalty that shrinks but does not zero out), LASSO (an $\ell_1$ penalty that produces sparse solutions), and elastic net (a convex combination of the two). The geometry that produces sparse LASSO solutions is the same geometry that makes hyperparameter selection via cross-validation critical: choose the penalty strength badly and you recover either OLS-like overfitting or null-like underfitting. The lecture closes with two case studies in the application of penalized regression to gene-expression-based clinical prediction — MammaPrint and the Duke "metagene" affair — that produced dramatically different outcomes, for reasons that have nothing to do with the choice of penalty and everything to do with how the predictions were validated.
+
 ---
 
 ## Perfect training, catastrophic prediction

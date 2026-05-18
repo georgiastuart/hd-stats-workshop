@@ -1,7 +1,7 @@
 ---
 title: "Lecture 3: The Map That Drew Itself"
-subtitle: "Dimension Reduction and the Geometry of High-Dimensional Data"
-date: "Day 2, 8:00–9:00"
+subtitle: "Estimating Low-Dimensional Structure"
+date: "2026-05-16"
 format:
   html:
     toc: true
@@ -15,6 +15,12 @@ format:
     toc-depth: 2
     number-sections: false
     fig-pos: 'H'
+---
+
+## Orientation
+
+Day 1 estimated quantities from a population of test statistics. This lecture estimates *structure* from a population of high-dimensional observations. The premise of dimension reduction is that high-dimensional data often live near a low-dimensional manifold embedded in the ambient space; the goal of the methods developed here is to estimate that manifold and project the data onto it. Principal component analysis (PCA) does this linearly, identifying directions of maximal variance via the singular value decomposition; in the $p \gg n$ regime, PCA acquires a random-matrix complication (eigenvalues are biased upward, eigenvectors are biased toward noise) that the lecture treats explicitly. The two principal nonlinear methods — t-SNE and UMAP — operate on local neighborhoods rather than global covariance, and produce embeddings that are useful but systematically misleading in specific ways. The recurring example is single-cell genomics, in which a 30,000-gene expression matrix per cell is routinely compressed to 30–50 principal components before any clustering, annotation, or downstream analysis. Lab 3 walks through the standard workflow on the Golub dataset; Lecture 4 turns to regression in the same high-dimensional regime, where the analogous geometric and statistical complications produce different methods (penalized regression) for a different inferential goal (prediction).
+
 ---
 
 ## From eigenfaces to genes

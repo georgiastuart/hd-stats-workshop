@@ -1,7 +1,7 @@
 ---
 title: "Lecture 2: The Histogram That Was Too Wide"
-subtitle: "False Discovery Rates and the Empirical Bayes Framework"
-date: "Day 1, 10:00–11:00"
+subtitle: "Estimation in High Dimensions"
+date: "2026-05-15"
 format:
   html:
     toc: true
@@ -17,86 +17,71 @@ format:
     fig-pos: 'H'
 ---
 
-## A picture worth 10,000 tests
+## Orientation
 
-Consider a $p$-value histogram from a gene-expression study comparing two cancer subtypes. Two regions of the histogram carry distinct meanings. The flat portion, distributed roughly uniformly across the unit interval, corresponds to genes for which there is no real difference between groups: under the null hypothesis, p-values are uniformly distributed on $[0,1]$, and the flat region is precisely what that uniformity looks like. The spike near zero corresponds to true discoveries — genes whose expression genuinely differs between conditions and which therefore produce systematically small p-values.
+Lecture 1 used the $p$-value histogram to *decide* which genes to call discoveries. This lecture uses the same picture to *estimate* quantities directly from it: the proportion of true nulls $\pi_0$, the density $f_1$ of the alternatives, and — for any specific test — the posterior probability that its null hypothesis is true. The unifying framework is Efron's two-groups model,
 
-The proportion of true nulls $\pi_0$ is *visible* in this picture. It is the height of the flat region, normalized so that an entirely flat histogram would have height one. A spike that rises above this baseline near zero is the visible signature of real signal. If most of the mass lies in the flat region, most genes are null; if the spike is large, many genes carry signal.
+$$f(z) = \pi_0\, f_0(z) + (1-\pi_0)\, f_1(z),$$
 
-That the histogram itself encodes the answer is the central observation of this lecture. The development of a rigorous procedure from this visual intuition occupied statistics for several decades. The remainder of the lecture traces that development: from the Benjamini–Hochberg procedure, through Storey's adaptive estimators, to Efron's two-groups model and the local false discovery rate.
-
----
-
-## The Benjamini–Hochberg procedure
-
-Lecture 1 established that the family-wise error rate (FWER) is the wrong target in high-dimensional settings. The right target is the *false discovery rate* (FDR): the expected proportion of false positives among declared discoveries.
-
-Formally, suppose $m$ tests are conducted, of which $V$ produce false rejections and $R$ produce rejections of any kind. The false discovery rate is
-
-$$\mathrm{FDR} = \mathbb{E}\!\left[\frac{V}{R \vee 1}\right],$$
-
-where the convention $R \vee 1$ ensures the ratio is zero when no rejections are made. In contrast to the FWER, this quantity scales sensibly with the number of tests: a list of 500 discoveries with 25 false positives has an FDR of 5 percent, regardless of how many tests were originally performed.
-
-[Benjamini and Hochberg (1995)](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x) provided a procedure that controls the FDR at any chosen level $\alpha$. Given the ordered p-values $p_{(1)} \leq p_{(2)} \leq \cdots \leq p_{(m)}$:
-
-1. Find the largest index $k$ for which $p_{(k)} \leq \frac{k}{m}\alpha$.
-2. Reject $H_{0(1)}, H_{0(2)}, \ldots, H_{0(k)}$.
-
-The procedure has a transparent geometric interpretation. Plotting the ordered p-values $p_{(i)}$ against $i/m$ yields a step function that begins near zero and rises toward unity. The Benjamini–Hochberg procedure draws a straight line through the origin with slope $\alpha$ and rejects every hypothesis whose ordered p-value lies below or on the line at the largest crossing. The original theorem guarantees that, under independence of the test statistics,
-
-$$\mathrm{FDR} \leq \frac{m_0}{m}\alpha \leq \alpha,$$
-
-where $m_0$ denotes the (unknown) number of true nulls.
-
-The independence assumption is restrictive. Gene expression measurements are correlated by biology — co-regulated transcripts vary together — and the original theorem does not directly apply. [Benjamini and Yekutieli (2001)](https://doi.org/10.1214/aos/1013699998) established that under arbitrary dependence the procedure remains valid if $\alpha$ is replaced by $\alpha / \sum_{i=1}^m i^{-1} \approx \alpha / \ln m$. This adjustment is severe and is rarely adopted in practice. A more usable result is that under positive regression dependency on a subset (PRDS) — a condition often satisfied in genomic applications — the original BH procedure controls FDR at $\alpha$ without modification.
+a finite mixture that subsumes every procedure developed in Lecture 1 and produces, as a bonus, a per-test posterior — the local false discovery rate — that classical testing cannot. The historical anchor for the approach is Stein's 1956 inadmissibility result: in the parallel-estimation problem that high-dimensional data create, the natural estimator is not optimal, and the aggregate of measurements can be used to improve each individual one. The Singh prostate-cancer microarray ([Singh et al., 2002](https://doi.org/10.1016/S1535-6108(02)00030-2)) is the running cautionary example: an empirical $z$-score histogram visibly wider than $N(0,1)$, signaling that the theoretical null distribution is wrong and that the empirical null must replace it before any inference is trustworthy. The lecture closes with a bridge to Day 2, which continues the estimation story in the geometry of dimension reduction (Lecture 3) and the regularized regression of $p \gg n$ models (Lecture 4).
 
 ---
 
-## Borrowing strength: from Stein to empirical Bayes
+## Many parameters, one dataset
 
-The two-sample tests examined so far treat each gene in isolation: the test for gene 4,237 makes no use of the data from genes 1 through 4,236. A different perspective on high-dimensional inference begins with the recognition that the other tests, in aggregate, carry information about any individual one.
+Classical statistics develops estimators one parameter at a time. The mean of a sample is estimated from that sample; the regression coefficient for a predictor is estimated from the data on that predictor. Each estimate is a function of its own data, treated as independent of every other estimate the analyst might compute.
 
-The historical anchor for this idea is [Stein's (1956)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Third-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Inadmissibility-of-the-Usual-Estimator-for-the-Mean-of-a/bsmsp/1200501656) result on the inadmissibility of the sample mean. Suppose one observes $y_1, \ldots, y_d$ with $y_i \sim N(\theta_i, 1)$ and wishes to estimate the vector $(\theta_1, \ldots, \theta_d)$ under squared-error loss. The natural estimator is $\hat\theta_i = y_i$. Stein proved that this estimator is *inadmissible* whenever $d \geq 3$: there exists another estimator with strictly smaller risk for every $\theta$. The James–Stein estimator ([James and Stein, 1961](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Fourth-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Estimation-with-Quadratic-Loss/bsmsp/1200512173)) takes the form
+High-dimensional inference inverts that posture. The same dataset that produces an estimate for gene 4,237 produces estimates for genes 1 through 4,236 and for genes 4,238 through 10,000. The 9,999 other estimates are not independent of the one of interest; collectively, they describe the *population* of estimates and constrain what any single one can plausibly be.
+
+The classical estimator discards this information. Each test is conducted in isolation; each $p$-value is computed only from the data for its own gene. The estimation perspective on multiple testing recognizes that the histogram of $p$-values — or, equivalently, the histogram of $z$-scores — is itself an estimable object, and that estimating it answers questions the classical procedure cannot.
+
+That is the program of this lecture.
+
+---
+
+## Stein's paradox and the case for shrinkage
+
+The historical anchor is [Stein's (1956)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Third-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Inadmissibility-of-the-Usual-Estimator-for-the-Mean-of-a/bsmsp/1200501656) result on the inadmissibility of the sample mean. Suppose one observes $y_1, \ldots, y_d$ with $y_i \sim N(\theta_i, 1)$ and wishes to estimate the vector $\boldsymbol\theta = (\theta_1, \ldots, \theta_d)$ under squared-error loss. The natural estimator is $\hat\theta_i = y_i$. Stein proved that this estimator is *inadmissible* whenever $d \geq 3$: there exists another estimator with strictly smaller risk for every $\boldsymbol\theta$. The [James–Stein estimator (1961)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Fourth-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Estimation-with-Quadratic-Loss/bsmsp/1200512173) realizes the improvement explicitly,
 
 $$\hat\theta_i^{\mathrm{JS}} = \bar y + \left(1 - \frac{(d-3)\sigma^2}{\sum_j (y_j - \bar y)^2}\right)(y_i - \bar y),$$
 
-shrinking each individual estimate toward the grand mean of all observations.
+shrinking each coordinate toward the grand mean of all coordinates. The shrinkage factor is data-dependent: when the $y_i$ are tightly clustered, more shrinkage; when they are spread out, less. The dependence of the estimate for $\theta_i$ on the other coordinates is what produces the risk improvement.
 
-[Efron and Morris (1977)](https://www.jstor.org/stable/24953895) demonstrated the practical force of this result with a baseball illustration: end-of-season batting averages are predicted more accurately by shrinking each player's early-season average toward the grand mean across players than by using each player's own data alone. The players are independent in any biological or causal sense, yet their data jointly improve every individual estimate.
+The Stein result was counterintuitive in 1956 and remains so. Each $y_i$ is the maximum-likelihood estimate of $\theta_i$, depends only on the data relevant to $\theta_i$, and is unbiased. None of that survives the move to vector loss: when one cares about all of the $\theta_i$ simultaneously, the estimator can be strictly improved by allowing each coordinate to depend on the others.
 
-This is the founding insight of empirical Bayes. When many parallel inferences are conducted under exchangeable conditions, the aggregate of observations carries information about any single one — information that classical, one-at-a-time procedures discard. In the high-dimensional setting, where ten thousand genes are tested simultaneously, the prior probability that any particular gene is non-null can be inferred from the population of tests. The data themselves reveal the prior; the analyst is not required to specify one.
+[Efron and Morris (1977)](https://www.jstor.org/stable/24953895) demonstrated the practical force of the result with a baseball illustration. End-of-season batting averages for 18 major-league players are predicted more accurately by *shrinking each player's early-season average toward the grand mean across players* than by using each player's own data alone. The players are independent in any biological or causal sense; their data nevertheless improve every individual estimate.
 
-> "Letting the data determine the prior turns Bayesian inference from a subjective into a largely objective technique." — Efron, [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), Ch. 1.
-
----
-
-## Storey's $\pi_0$ and the $q$-value
-
-The Benjamini–Hochberg procedure controls FDR at $\alpha m_0/m$, which is conservative whenever $m_0 < m$. [Storey (2002)](https://doi.org/10.1111/1467-9868.00346) proposed an adaptive procedure that estimates $\pi_0 = m_0/m$ from the data and uses the resulting estimate to recover the additional power that BH leaves on the table.
-
-The estimator exploits the same observation as the histogram diagnostic. Under the null, p-values are uniform; the distribution of large p-values is therefore approximately uniform regardless of how many alternatives are present. For a tuning parameter $\lambda$, typically $\lambda = 0.5$,
-
-$$\hat\pi_0(\lambda) = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)}.$$
-
-The numerator counts p-values above $\lambda$; the denominator is the expected number of such p-values under the null. The R package `qvalue` automates the choice of $\lambda$.
-
-Storey ([2003](https://doi.org/10.1214/aos/1074290335)) defined the $q$-value as the multiple-testing analogue of the p-value:
-
-$$q_i = \min_{t \geq p_i} \widehat{\mathrm{FDR}}(t).$$
-
-The $q$-value of test $i$ is the smallest FDR at which test $i$ would be declared significant. Operationally, it occupies the same role as a p-value but answers a different question: a p-value reports the per-test false-positive probability under the null; a $q$-value reports the expected proportion of false discoveries among rejections at least as significant as the one observed.
+This is the founding insight of empirical Bayes. When many parallel inferences are conducted under exchangeable conditions, the aggregate of observations carries information about any single one — information that classical, one-at-a-time procedures discard.
 
 ---
 
-## Efron's two-groups model
+## Empirical Bayes: the data determines the prior
 
-A more foundational perspective on multiple testing was developed by [Efron (2004)](https://doi.org/10.1198/016214504000000089), elaborated in [Efron (2008)](https://doi.org/10.1214/07-STS236), and consolidated in [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362). The two-groups model posits that each of the $m$ tests belongs to one of two latent groups: a null group, with prior probability $\pi_0$ and density $f_0$ (typically $N(0,1)$ for $z$-scores), and a non-null group, with prior probability $1-\pi_0$ and density $f_1$. The marginal density of the observed test statistics is the mixture
+The Bayesian formulation of the parallel-inference problem assigns each $\theta_i$ a prior distribution and conditions on $y_i$ to obtain a posterior. The classical objection to Bayesian methods is that the prior must be specified by the analyst. In the high-dimensional setting, the objection loses its force: the population of $\theta_i$ is observable, in the sense that the histogram of $y_i$ is an estimate of the marginal distribution
 
-$$f(z) = \pi_0 f_0(z) + (1-\pi_0)f_1(z).$$
+$$f(y) = \int g(y \mid \theta)\, \pi(\theta)\, d\theta,$$
 
-The framework unifies the procedures discussed above. With $m$ in the thousands, $f(z)$ can be estimated nonparametrically — for instance by a histogram or by Lindsey's method, which fits a Poisson regression to binned counts. Once $f$ is in hand, $\pi_0$ can be estimated from the central peak (where $f_0$ dominates) and $f_1$ recovered by subtraction.
+where $g$ is the sampling density and $\pi$ is the prior. With $d$ in the thousands, $f$ is estimated nonparametrically from the data, and $\pi$ is recovered by deconvolution. The data themselves determine the prior.
+
+> "Letting the data determine the prior turns Bayesian inference from a subjective into a largely objective technique."
+>
+> — Efron, [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), Ch. 1.
+
+This is the empirical-Bayes program. In the multiple-testing setting, $\theta_i$ encodes whether gene $i$ is null or alternative, and the prior probability of being null is a single number $\pi_0$ that the histogram of $p$-values (or $z$-scores) makes immediately estimable.
+
+---
+
+## The two-groups model
+
+[Efron (2004)](https://doi.org/10.1198/016214504000000089), elaborated in [Efron (2008)](https://doi.org/10.1214/07-STS236) and consolidated in [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), formalizes the framework as a finite mixture. Each of the $m$ tests belongs to one of two latent groups: a null group, with prior probability $\pi_0$ and density $f_0$ (typically $N(0,1)$ for $z$-scores), and a non-null group, with prior probability $1-\pi_0$ and density $f_1$. The marginal density of the observed test statistics is the mixture
+
+$$f(z) = \pi_0\, f_0(z) + (1-\pi_0)\, f_1(z).$$
+
+The framework unifies the procedures of Lecture 1 and produces the local FDR as a corollary. With $m$ in the thousands, $f(z)$ can be estimated nonparametrically — for instance by a histogram or by Lindsey's method, which fits a Poisson regression to binned counts. Once $f$ is in hand, $\pi_0$ can be estimated from the central peak (where $f_0$ dominates) and $f_1$ recovered by subtraction.
 
 The entire pipeline is empirical Bayes: the aggregate data are used to estimate the prior $\pi_0$ and the alternative density $f_1$, and Bayes's theorem is then applied case by case.
+
+The relationship to Storey's $\hat\pi_0$ (Lecture 1) is direct: that estimator counts $p$-values above a threshold $\lambda$ and divides by the expected number under the uniform null. It is the simplest possible plug-in estimator of the mixing weight in the two-groups model, with $f_0$ taken as uniform on $[0,1]$ (its form for $p$-values) and the central peak of $f$ approximated by its tail beyond $\lambda$.
 
 ---
 
@@ -104,19 +89,21 @@ The entire pipeline is empirical Bayes: the aggregate data are used to estimate 
 
 The two-groups model affords a refinement that the tail-area FDR cannot: a per-test posterior probability of being null. Define
 
-$$\mathrm{fdr}(z) = \Pr(\mathrm{null} \mid Z = z) = \frac{\pi_0 f_0(z)}{f(z)}.$$
+$$\mathrm{fdr}(z) = \Pr(\mathrm{null} \mid Z = z) = \frac{\pi_0\, f_0(z)}{f(z)}.$$
 
 The local false discovery rate $\mathrm{fdr}(z)$ is, for any specific test with statistic $z$, the probability that the null hypothesis is true given that statistic. The tail-area FDR is its expectation over a rejection region:
 
-$$\mathrm{FDR}(z_0) = \mathbb{E}[\mathrm{fdr}(Z) \mid Z \geq z_0] = \frac{\int_{z_0}^\infty \mathrm{fdr}(z) f(z)\, dz}{\int_{z_0}^\infty f(z)\, dz}.$$
+$$\mathrm{FDR}(z_0) = \mathbb{E}\!\left[\mathrm{fdr}(Z) \mid Z \geq z_0\right] = \frac{\int_{z_0}^\infty \mathrm{fdr}(z)\, f(z)\, dz}{\int_{z_0}^\infty f(z)\, dz}.$$
 
-A practical consequence: two tests with the same tail-area FDR can have very different local FDRs. A $z$-score at the boundary of a rejection region carries a high posterior probability of being null; a $z$-score deep in the tail carries a much lower one. The local FDR is the more informative summary at the level of individual tests.
+A practical consequence: two tests with the same tail-area FDR can have very different local FDRs. A $z$-score at the boundary of a rejection region carries a high posterior probability of being null; a $z$-score deep in the tail carries a much lower one. The local FDR is the more informative summary at the level of individual tests, and the natural output of the estimation framework.
+
+The decision rule "reject when $\mathrm{fdr}(z) < c$" for some threshold $c$ (often $c = 0.2$ in genomics) is equivalent to applying a Bayesian decision rule with the empirical-Bayes posterior, and produces results that closely track BH for genes in the tails of the distribution while diverging — informatively — for genes near the rejection boundary.
 
 ---
 
 ## A cautionary case: the empirical null
 
-The two-groups model assumes that $f_0$ is known. In a textbook calculation, $z$-scores derived from t-statistics with appropriate degrees of freedom are taken to be $N(0,1)$ under the null. Real data frequently fail this assumption.
+The two-groups model assumes that $f_0$ is known. In a textbook calculation, $z$-scores derived from $t$-statistics with appropriate degrees of freedom are taken to be $N(0,1)$ under the null. Real data frequently fail this assumption.
 
 Efron analyzed a prostate-cancer microarray study ([Singh et al., 2002](https://doi.org/10.1016/S1535-6108(02)00030-2)) consisting of 6,033 genes measured on 102 patients. The test statistics were converted to $z$-scores, with the expectation that under the null they would follow $N(0,1)$. The empirical histogram had a central peak that was wider than $N(0,1)$ would predict: the appropriate null was closer to $N(\hat\delta_0, \hat\sigma_0^2)$ with $\hat\sigma_0 > 1$.
 
@@ -124,15 +111,17 @@ Applying the theoretical $N(0,1)$ null to such data overstates significance. Gen
 
 The diagnostic protocol is straightforward: estimate $f_0$ from the central portion of the histogram and verify whether $\hat\sigma_0 \approx 1$. When it is not, use the empirical null in place of the theoretical one. The R package `locfdr` implements the full pipeline.
 
+The empirical null is the most important practical lesson of the estimation framework. The same picture that estimates $\pi_0$ and $f_1$ also exposes whether the assumed null was correct in the first place.
+
 ---
 
-## When does this framework apply?
+## When does the framework apply?
 
 The empirical-Bayes machinery requires three conditions. The number of tests $m$ must be large enough — at least several hundred, ideally several thousand — to support nonparametric estimation of $f(z)$. The tests must be exchangeable, in the sense that they share the same null distribution and similar noise structure; mixing fundamentally different measurements (gene expression with DNA methylation, say) violates this requirement. Finally, the two-groups mixture must be a reasonable approximation to the data-generating process.
 
 Failures of these conditions are diagnosable. Small $m$ produces noisy estimates of $f$ and, consequently, of $\hat\pi_0$ and the local FDR. Strong correlation among tests can distort the empirical null; in the worst case, no decomposition of $f$ into a null and an alternative is interpretable. Heterogeneity across tests can render the null density itself ill-defined.
 
-A practical decision framework, scaled to the number of tests and the inferential goal, is:
+A practical decision framework, scaled to the number of tests and the inferential goal:
 
 - Few tests (1–20): the FWER, controlled by Bonferroni or Holm, is the right target.
 - Many tests with confirmatory goals: FWER procedures remain appropriate.
@@ -141,8 +130,8 @@ A practical decision framework, scaled to the number of tests and the inferentia
 
 ---
 
-## Summary and outlook
+## Summary and bridge to Day 2
 
-Five points constitute the lecture's content. First, the false discovery rate is the right inferential target when the number of tests is large and the goal is discovery rather than confirmation. Second, the Benjamini–Hochberg procedure controls FDR under independence (and under PRDS), and remains the default tool. Third, Storey's adaptive estimator of $\pi_0$ produces the $q$-value, the natural multiple-testing analogue of the p-value. Fourth, Efron's two-groups model provides the unifying framework: $f = \pi_0 f_0 + (1-\pi_0)f_1$ subsumes all of the procedures above and motivates the local FDR as the most informative per-test summary. Fifth, the assumed null distribution $f_0$ should always be checked against the empirical one; the prostate-cancer reanalysis is the standard cautionary case.
+This lecture replaced the testing perspective of Lecture 1 with an estimation perspective. The histogram that diagnosed signal in Lecture 1 became, in this lecture, the basis for estimating the proportion of nulls, the alternative density, and a per-test posterior probability of being null. Five claims structure the content. First, the parallel-estimation problem created by high-dimensional data favors estimators that depend on the aggregate of observations rather than on any individual one (Stein, James–Stein). Second, empirical Bayes operationalizes this insight by estimating the prior from the data. Third, Efron's two-groups model is the standard formalization: $f = \pi_0 f_0 + (1-\pi_0) f_1$. Fourth, the local false discovery rate is the per-test posterior probability of being null and is the most informative summary at the level of individual tests. Fifth, the assumed null distribution $f_0$ should always be checked against the empirical one; the Singh prostate-cancer reanalysis is the standard cautionary case.
 
-Lab 2 applies these procedures to the Golub dataset directly. Day 2 turns from inference about individual variables to the discovery of low-dimensional structure in high-dimensional data — the geometry of dimension reduction.
+Lab 2 applies these procedures to the Golub dataset: $\hat\pi_0$, $q$-values, the two-groups mixture, the local FDR, and an empirical-null fit. Day 2 continues the estimation theme in different geometric form: dimension reduction (Lecture 3) estimates low-dimensional structure embedded in high-dimensional measurements; penalized regression (Lecture 4) estimates regression coefficients in the $p \gg n$ regime where ordinary least squares fails by construction. The thread is continuous — the histogram of $p$-values, the manifold of expression profiles, and the sparse regression coefficient vector are all objects to be estimated from the same kind of data — and the workshop's emphasis on critical evaluation persists throughout.

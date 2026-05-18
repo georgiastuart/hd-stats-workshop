@@ -1,6 +1,6 @@
 ---
 title: "Lecture 1: The Gene That Wasn't There"
-subtitle: "How False Positives Survive — and How a Histogram Catches Them"
+subtitle: "Hypothesis Testing in High Dimensions"
 date: "2026-05-15"
 format:
   html:
@@ -15,6 +15,14 @@ format:
     toc-depth: 2
     number-sections: false
     fig-pos: 'H'
+---
+
+## Orientation
+
+This lecture concerns *hypothesis testing* when many hypotheses are tested in parallel. The question it answers is: given thousands of simultaneous tests, how should one decide which results to call discoveries? The answer is built in three steps. First, the $p$-value histogram is a diagnostic that reveals whether any real signal is present and approximately how much. Second, Bonferroni's family-wise error rate (FWER) is the right criterion when even a single false positive is unacceptable, but it is too conservative for the discovery setting in which most high-dimensional analysis operates. Third, the false discovery rate (FDR) — controlled either by the Benjamini–Hochberg procedure or by Storey's adaptive $q$-value — replaces the question "did I make any false positives?" with "what fraction of my declared discoveries are false?" That reframing is the central technical idea of the lecture. The running example is the Golub leukemia dataset, 3,051 genes tested across 72 patients; the framing example is the fifteen-year history of the serotonin-transporter polymorphism 5-HTTLPR.
+
+Lecture 2 turns from testing to *estimation*: from declaring genes significant to estimating quantities — the proportion of nulls, the alternative density, the per-test posterior probability of being null — directly from the histogram.
+
 ---
 
 ## The serotonin gene that wasn't
@@ -113,7 +121,58 @@ For a biologist screening thousands of genes to nominate candidates for follow-u
 
 Bonferroni cannot produce such a list because it is engineered to control a different error rate, and in service of that goal it discards most of the real signal.
 
-The required reorientation is from "did I make any false positives?" to "what fraction of my declared discoveries are false?" The latter question has a quantitative answer, and Lecture 2 develops it. The remainder of the present lecture demonstrates what happens when no correction is applied at all.
+The required reorientation is from "did I make any false positives?" to "what fraction of my declared discoveries are false?" The latter question has a quantitative answer, due to Benjamini and Hochberg.
+
+---
+
+## The false discovery rate
+
+Suppose $m$ tests are conducted, of which $V$ produce false rejections and $R$ produce rejections of any kind. The false discovery rate is the expected proportion of false positives among declared discoveries:
+
+$$\mathrm{FDR} = \mathbb{E}\!\left[\frac{V}{R \vee 1}\right],$$
+
+where the convention $R \vee 1$ ensures the ratio is zero when no rejections are made. In contrast to the FWER, this quantity scales sensibly with the number of tests: a list of 500 discoveries with 25 false positives has an FDR of 5 percent, regardless of whether the analysis began with 3,000 tests or 30,000.
+
+The FDR encodes a different inferential goal than the FWER. Bonferroni guarantees that no discovery on the list is false; the FDR tolerates a controlled fraction of false discoveries in exchange for a larger list of real ones. For exploratory genomics — where every candidate will be validated experimentally before any biological claim is made — the FDR is the right target.
+
+---
+
+## The Benjamini–Hochberg procedure
+
+[Benjamini and Hochberg (1995)](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x) provided a procedure that controls the FDR at any chosen level $\alpha$. Given the ordered $p$-values $p_{(1)} \leq p_{(2)} \leq \cdots \leq p_{(m)}$:
+
+1. Find the largest index $k$ for which $p_{(k)} \leq \frac{k}{m}\alpha$.
+2. Reject $H_{0(1)}, H_{0(2)}, \ldots, H_{0(k)}$.
+
+The procedure has a transparent geometric interpretation. Plotting the ordered $p$-values $p_{(i)}$ against $i/m$ yields a step function that begins near zero and rises toward unity. The Benjamini–Hochberg procedure draws a straight line through the origin with slope $\alpha$ and rejects every hypothesis whose ordered $p$-value lies on or below the line, up to the largest crossing. The original theorem guarantees that, under independence of the test statistics,
+
+$$\mathrm{FDR} \leq \frac{m_0}{m}\alpha \leq \alpha,$$
+
+where $m_0$ denotes the (unknown) number of true nulls. The factor $m_0/m$ is the reason a later procedure — Storey's adaptive $q$-value, which estimates that quantity from the data — can recover power that BH leaves on the table.
+
+The independence assumption is restrictive. Gene-expression measurements are correlated by biology — co-regulated transcripts vary together — and the original theorem does not directly apply. [Benjamini and Yekutieli (2001)](https://doi.org/10.1214/aos/1013699998) established that under arbitrary dependence the procedure remains valid if $\alpha$ is replaced by $\alpha / \sum_{i=1}^m i^{-1} \approx \alpha / \ln m$. This adjustment is severe and is rarely adopted in practice. A more usable result is that under *positive regression dependency on a subset* (PRDS) — a condition often satisfied in genomic applications — the original BH procedure controls FDR at $\alpha$ without modification. The practical recommendation is to use the unmodified procedure, document the PRDS assumption, and check sensitivity only when the correlation structure is severe or unusual.
+
+Applied to the Golub data at $\alpha = 0.05$, the BH procedure declares far more discoveries than Bonferroni — typically several hundred — while guaranteeing that, in expectation, no more than five percent of those discoveries are false. The list is the useful object that the biologist needed and that Bonferroni could not provide.
+
+---
+
+## Storey's $\pi_0$ and the $q$-value
+
+The factor $m_0/m$ in the BH bound is the proportion of true nulls in the experiment. When this proportion is close to one, the BH procedure is nearly tight; when it is smaller — as when many genes truly differ between groups — BH is conservative. [Storey (2002)](https://doi.org/10.1111/1467-9868.00346) proposed an adaptive procedure that estimates $\pi_0 = m_0/m$ from the data and uses the estimate to recover the additional power.
+
+The estimator exploits the histogram diagnostic. Under the null, $p$-values are uniform on $[0,1]$; the density of large $p$-values is therefore approximately uniform regardless of how many alternatives are present in the experiment. For a tuning parameter $\lambda$ (typically $\lambda = 0.5$),
+
+$$\hat\pi_0(\lambda) = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)}.$$
+
+The numerator counts $p$-values above $\lambda$; the denominator is the expected number of such $p$-values under the null. The R package `qvalue` automates the choice of $\lambda$.
+
+Storey ([2003](https://doi.org/10.1214/aos/1074290335)) defined the $q$-value as the multiple-testing analogue of the $p$-value:
+
+$$q_i = \min_{t \geq p_i} \widehat{\mathrm{FDR}}(t).$$
+
+The $q$-value of test $i$ is the smallest FDR at which test $i$ would be declared significant. Operationally, it occupies the same role as a $p$-value but answers a different question: a $p$-value reports the per-test false-positive probability under the null; a $q$-value reports the expected proportion of false discoveries among rejections at least as significant as the one observed.
+
+The remainder of the present lecture demonstrates what happens when no correction is applied at all.
 
 ---
 
@@ -165,4 +224,6 @@ The remedy had been available throughout. GWAS adopted it from the outset: test 
 
 ---
 
-The 5-HTTLPR episode is not a story about poor scientists. It is a story about what occurs when a field's statistical framework is not commensurate with the scale of its inquiry. The framework adequate to that scale exists, and Lecture 2 develops it. The accompanying lab applies the procedures of this lecture to the Golub dataset directly: 3,051 tests, the diagnostic histogram, the Bonferroni threshold, and an explicit comparison between "controls any error" and "supports useful inference." That comparison is the territory occupied by the false discovery rate.
+The 5-HTTLPR episode is not a story about poor scientists. It is a story about what occurs when a field's statistical framework is not commensurate with the scale of its inquiry. The framework adequate to that scale is the one this lecture developed: a diagnostic ($p$-value histogram), a stringent error criterion when needed (Bonferroni / FWER), and a discovery-oriented criterion when useful (BH and $q$-values for FDR control). The accompanying Lab 1 applies these procedures to the Golub dataset directly: 3,051 tests, the diagnostic histogram, the Bonferroni threshold, the BH-adjusted rejection set, and an explicit comparison between the three.
+
+Lecture 2 changes mode. Rather than declaring genes significant, it estimates quantities from the same histogram: the proportion of nulls $\pi_0$, the alternative density $f_1$, and a per-test posterior probability of being null. That posterior — Efron's local FDR — is the most informative summary at the level of individual tests, and the bridge to the high-dimensional estimation problems that occupy Day 2.

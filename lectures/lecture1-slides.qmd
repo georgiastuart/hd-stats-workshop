@@ -361,7 +361,7 @@ Third, whether your analysis is trustworthy. A well-behaved analysis produces a 
 
 I want you to internalize this: before you look at gene lists, before you compute adjusted p-values, before you run any correction procedure — plot the histogram. It takes ten seconds and it tells you whether the rest of your analysis is worth doing.
 
-We'll come back to this histogram in Lecture 2, where it turns from a diagnostic into an estimator. The flat part isn't just telling you "these genes are null" — it's telling you the proportion of null genes, and that proportion is the key ingredient in false discovery rate estimation. But I'm getting ahead of myself.
+A few slides from now we will use this same histogram to construct the BH and Storey thresholds; in Lecture 2 we will go further still and use it to estimate quantities — π₀, $f_1$, and a per-test posterior probability of being null. The flat part is the central object of both lectures.
 :::
 
 ---
@@ -371,14 +371,14 @@ We'll come back to this histogram in Lecture 2, where it turns from a diagnostic
 ![](images/pval-histogram-pathologies.png){fig-alt="Storey & Tibshirani (2003) Figure 1: p-value histogram from the Hedenfalk breast cancer dataset; dashed line at the uniform-null density, dotted line at the estimated null proportion" width="55%"}
 
 **Dashed line:** density if all genes were null (uniform; height = 1).
-**Dotted line:** estimated density of the null genes ($\hat\pi_0$, read off the flat region) — the central quantity in FDR estimation, developed in Lecture 2.
+**Dotted line:** estimated density of the null genes ($\hat\pi_0$, read off the flat region) — the central quantity in Storey's adaptive FDR control (next sub-section) and in Efron's two-groups model (Lecture 2).
 
 ::: {.notes}
 This is the canonical version of the diagnostic, from Storey & Tibshirani (2003). The histogram is the 3,170 p-values from the Hedenfalk breast cancer dataset — a different experiment from Golub, but the same shape: a spike near zero, then a roughly flat tail.
 
 Two reference lines. The **dashed** line at height 1 is what you would see if all genes were null — p-values uniformly distributed, density equal to 1 in every bin. The **dotted** line, lower, is at the estimated density of the null genes — π₀ — which Storey and Tibshirani read directly off the flat region.
 
-That second line is the key idea. The height of the flat tail is not just descriptive — it estimates the proportion of true nulls in the experiment, and that proportion is what makes the false discovery rate computable. We will use this in Lecture 2 to construct q-values. For now, just internalize the picture: spike + flat, with the flat region at some height below 1. That height is π₀, and π₀ is the difference between Bonferroni and BH.
+That second line is the key idea. The height of the flat tail is not just descriptive — it estimates the proportion of true nulls in the experiment, and that proportion is what makes the false discovery rate computable. Storey's q-value (later in this lecture) is built around exactly this estimator; Efron's two-groups model (Lecture 2) uses it as the mixture weight on the null component. For now, just internalize the picture: spike + flat, with the flat region at some height below 1. That height is π₀, and π₀ is the difference between Bonferroni and BH.
 :::
 
 ---
@@ -538,37 +538,150 @@ This figure is the punchline. The red dots are statistically significant at conv
 
 ---
 
-## The gap
+## The gap between "no correction" and "Bonferroni"
 
-::: {style="font-size: 1.2em;"}
-| Approach | Genes significant | Problem |
+::: {style="font-size: 1.1em;"}
+| Approach | Genes called significant | Problem |
 |----------|:---:|---------|
-| No correction | Thousands | Hundreds of false positives |
+| No correction | Thousands | Hundreds of false positives — Caspi-style |
 | Bonferroni | A handful | Most real signal missed |
 :::
 
+Neither column produces the list a biologist actually wants: a useful discovery set in which most entries are real and the false-positive contamination is acceptable.
+
+The required reorientation: from "did I make *any* false positives?" to "what *fraction* of my declared discoveries are false?" That latter question has a quantitative answer.
+
 ::: {.notes}
-You need a different question. Not "did I make any false positives?" but "what fraction of my discoveries are false?" That question has an answer, and it's the subject of Lecture 2. But before we get there, I want to show you what happens when people skip the correction entirely.
+The "gap" between uncorrected (over-permissive) and Bonferroni (over-conservative) is what FDR was invented to fill. The next slide makes the reformulation explicit; the slide after defines FDR formally; subsequent slides develop the Benjamini-Hochberg procedure that controls it.
 :::
 
 ---
 
-## Two questions
+## FWER vs FDR: two different questions
 
-::: {style="font-size: 1.2em;"}
-**FWER** (Bonferroni): Did I make **any** false positive?
+::: {style="font-size: 1.1em;"}
+**FWER** (Bonferroni): probability of *any* false positive.
 
-$$P(\text{at least one false positive}) \leq \alpha$$
+$$\mathrm{FWER} = P(\text{at least one false positive}) \leq \alpha.$$
 
-. . .
+**FDR** (Benjamini–Hochberg): expected *fraction* of false positives among declared discoveries.
 
-**FDR** (Benjamini-Hochberg): What **fraction** of my discoveries are false?
+$$\mathrm{FDR} = \mathbb{E}\!\left[\frac{V}{R \vee 1}\right] \leq \alpha,$$
 
-$$E\!\left[\frac{\text{false positives}}{\text{total discoveries}}\right] \leq \alpha$$
+where $V$ is the number of false rejections, $R$ the number of rejections, and the $R \vee 1$ convention makes the ratio zero when no rejections are made.
 :::
 
+If a list of 200 genes has FDR controlled at 10%, in expectation 20 are false and 180 are real — a list that supports follow-up experiments. Bonferroni cannot produce that list because it is engineered to control a different quantity.
+
 ::: {.notes}
-This is the conceptual reframe. Bonferroni asks: what's the probability of any false positive? FDR asks: of the genes I called significant, what fraction are wrong? If I call 200 genes significant and the FDR is 10%, I expect about 20 of them to be wrong. The other 180 are real. That's a useful list.
+Important to land the difference operationally: FWER controls a probability; FDR controls a fraction. Both have their place — FWER for confirmation (gravitational waves, 5σ), FDR for discovery (genomics).
+:::
+
+---
+
+## The Benjamini–Hochberg procedure controls FDR at level $\alpha$
+
+Given $m$ hypothesis tests with $p$-values $p_1, \ldots, p_m$:
+
+1. Order the $p$-values: $p_{(1)} \leq p_{(2)} \leq \cdots \leq p_{(m)}$.
+2. Find the **largest** index $k$ such that $p_{(k)} \leq \tfrac{k}{m}\,\alpha$.
+3. Reject $H_{0(i)}$ for all $i = 1, \ldots, k$.
+
+**Theorem** ([Benjamini & Hochberg, 1995](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x)). Under independence of the test statistics,
+
+$$\mathrm{FDR} \leq \frac{m_0}{m}\alpha \leq \alpha,$$
+
+where $m_0$ is the (unknown) number of true nulls. The factor $m_0/m$ is the reason Storey's adaptive procedure — which estimates $\pi_0 = m_0/m$ explicitly — can recover power that BH leaves on the table.
+
+::: {.notes}
+The "largest $k$" detail matters. Walking along the ordered $p$-values from smallest to largest, the BH curve $p_{(k)}$ may dip below the line $k\alpha/m$, rise above it, and dip again. The procedure rejects everything below the *rightmost* crossing, not the first. This is what makes BH a step-up procedure rather than a step-down one.
+:::
+
+---
+
+## BH: a straight line through the ordered $p$-values
+
+Plot $p_{(i)}$ against rank fraction $i/m$. The BH procedure draws a line from the origin with slope $\alpha$ and rejects every hypothesis at or below the line, up to the largest crossing.
+
+```{python}
+#| label: bh-geometric
+#| echo: false
+#| fig-height: 3.8
+#| fig-width: 9
+rng = np.random.default_rng(42)
+m_sim, m1 = 1000, 50
+p_null_sim = rng.uniform(size=m_sim - m1)
+p_alt_sim = rng.beta(0.1, 1, size=m1)
+pvals_sim = np.sort(np.concatenate([p_null_sim, p_alt_sim]))
+
+alpha_bh = 0.10
+ranks = np.arange(1, m_sim + 1) / m_sim
+crossings = pvals_sim <= alpha_bh * ranks
+k = int(np.max(np.where(crossings)[0])) if crossings.any() else 0
+
+fig, ax = plt.subplots(figsize=(9, 3.8))
+ax.scatter(ranks, pvals_sim, s=4, color="#444")
+ax.plot([0, 1], [0, alpha_bh], color="red", linewidth=2, label=f"BH line (slope α = {alpha_bh})")
+ax.axvline(ranks[k], color="steelblue", linestyle="--", linewidth=1.2,
+           label=f"Largest crossing: reject {k+1} hypotheses")
+ax.set_xlabel("Rank fraction $i/m$")
+ax.set_ylabel("Ordered $p$-value $p_{(i)}$")
+ax.set_title("BH procedure on a simulated dataset (m = 1,000; 50 alternatives)")
+ax.legend(loc="upper left")
+plt.tight_layout()
+plt.show()
+```
+
+Black points are the ordered $p$-values. The red line is the BH cutoff; the rightmost crossing identifies the threshold $k$. The procedure is monotone: the cutoff can only move *right* as more genes contribute small $p$-values.
+
+---
+
+## BH under dependence
+
+The original [Benjamini–Hochberg (1995)](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x) theorem assumes that the test statistics are **independent**. In genomics this is not satisfied — co-regulated transcripts vary together — and the original theorem does not directly apply.
+
+Two results address dependence:
+
+- **Worst-case** ([Benjamini & Yekutieli, 2001](https://doi.org/10.1214/aos/1013699998)). Under arbitrary dependence, the BH procedure controls FDR at level $\alpha$ if $\alpha$ is replaced by $\alpha / \sum_{i=1}^m i^{-1} \approx \alpha / \ln m$. The adjustment is severe (a factor of $\sim$10 at $m = 10{,}000$) and is rarely adopted in practice.
+- **PRDS** (positive regression dependency on a subset). Under this weaker condition — often satisfied in genomic applications — the *original* BH procedure controls FDR at $\alpha$ with no modification.
+
+**Practical recommendation.** Use the unmodified BH procedure, document that PRDS is assumed, and check sensitivity only when the correlation structure is severe or unusual.
+
+---
+
+## Storey's adaptive $\hat\pi_0$ recovers power BH leaves on the table
+
+The BH bound is $\mathrm{FDR} \leq \tfrac{m_0}{m}\alpha$. When $m_0/m$ — the proportion of true nulls — is appreciably less than one, BH is conservative. [Storey (2002)](https://doi.org/10.1111/1467-9868.00346) proposed an adaptive procedure that estimates $\pi_0 = m_0/m$ from the data:
+
+$$\hat\pi_0(\lambda) = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)}, \qquad \text{typically } \lambda = 0.5.$$
+
+The numerator counts $p$-values above $\lambda$; the denominator is the expected number of such $p$-values under the null. The ratio estimates $\pi_0$ directly from the flat region of the histogram — the same region that Storey & Tibshirani's Figure 1 highlighted with its dotted line.
+
+The R package `qvalue` automates the choice of $\lambda$. The adaptive procedure is more powerful than vanilla BH whenever $\hat\pi_0 < 1$, which is essentially always in genomic discovery settings.
+
+::: {.notes}
+Connect this back to the Storey-Tibshirani Figure 1 shown earlier — the dotted line at the height of the flat region is exactly π̂₀. The histogram you've been looking at all lecture is also a π̂₀ estimator, just read off by eye instead of computed.
+:::
+
+---
+
+## The $q$-value: the multiple-testing analogue of the $p$-value
+
+[Storey (2003)](https://doi.org/10.1214/aos/1074290335) defined the $q$-value:
+
+$$q_i = \min_{t \geq p_i}\, \widehat{\mathrm{FDR}}(t).$$
+
+The $q$-value of test $i$ is the smallest FDR at which test $i$ would be declared significant.
+
+Operationally it occupies the same role as a $p$-value, but answers a different question:
+
+- **$p$-value:** if I reject this one test, what is the false-positive probability *per test*?
+- **$q$-value:** if I reject all tests at least this significant, what fraction of those rejections are expected to be false?
+
+A gene with $q = 0.05$ can be reported with "an estimated 5% of discoveries at this threshold are false" — a claim about the *list* the gene belongs to, not about that gene in isolation.
+
+::: {.notes}
+The q-value is the natural reporting unit in a discovery-oriented analysis. In a typical genomics paper, the supplementary tables report q-values rather than (or alongside) p-values. The semantic shift is from per-test to per-list inference, which is exactly the shift the FDR framework demands.
 :::
 
 ---
@@ -601,7 +714,7 @@ plt.show()
 ```
 
 ::: {.notes}
-The Benjamini-Hochberg procedure finds the middle ground. We'll learn how it works in Lecture 2. For now, just see the result: uncorrected gives you thousands with hundreds of false positives. Bonferroni gives you a handful. BH gives you a useful discovery set. Which list would you want for follow-up experiments?
+This is the BH procedure we just developed, applied directly to the Golub data at $\alpha = 0.05$. Uncorrected gives you thousands of significant calls with hundreds of false positives. Bonferroni gives you a handful. BH gives you a useful discovery set in which, in expectation, no more than 5% of the calls are false. Which list would you want for follow-up experiments?
 :::
 
 ---
@@ -671,10 +784,12 @@ The fix was known the entire time. GWAS adopted it from the beginning: test ever
 
 ## Closing
 
-The 5-HTTLPR episode is not a story about poor scientists. It is a story about what occurs when a field's statistical framework is not commensurate with the scale of its inquiry. The framework adequate to that scale exists, and Lecture 2 develops it.
+The 5-HTTLPR episode is not a story about poor scientists. It is a story about what occurs when a field's statistical framework is not commensurate with the scale of its inquiry. The framework adequate to that scale is what this lecture developed: a diagnostic ($p$-value histogram), a stringent error criterion when needed (Bonferroni / FWER), and a discovery-oriented criterion when useful (BH and $q$-values for FDR control).
 
-The accompanying lab applies the procedures of this lecture to the Golub dataset: 3,051 tests, the diagnostic histogram, the Bonferroni threshold, and an explicit comparison between controlling any error and supporting useful inference. That comparison is the territory occupied by the false discovery rate.
+Lab 1 applies these procedures to the Golub dataset: 3,051 tests, the diagnostic histogram, the Bonferroni threshold, the BH-adjusted rejection set, and an explicit comparison between the three approaches.
+
+Lecture 2 changes mode. Rather than declaring genes significant, it estimates quantities from the same histogram: the proportion of nulls $\pi_0$, the alternative density $f_1$, and a per-test posterior probability of being null. That posterior — the local FDR — is the most informative summary at the level of individual tests, and the bridge to the high-dimensional estimation problems that occupy Day 2.
 
 ::: {.notes}
-Mirrors the close of the essay. No reveals; deliver as a single read-through, then transition into the lab.
+Mirrors the close of the essay. Deliver as a single read-through, then transition into Lab 1. Make the L2 framing explicit: same histogram, different mode (testing → estimation).
 :::
