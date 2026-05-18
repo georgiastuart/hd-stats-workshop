@@ -51,6 +51,22 @@ The Stein result was counterintuitive in 1956 and remains so. Each $y_i$ is the 
 
 [Efron and Morris (1977)](https://www.jstor.org/stable/24953895) demonstrated the practical force of the result with a baseball illustration. End-of-season batting averages for 18 major-league players are predicted more accurately by *shrinking each player's early-season average toward the grand mean across players* than by using each player's own data alone. The players are independent in any biological or causal sense; their data nevertheless improve every individual estimate.
 
+### The Efron–Morris baseball analysis in detail
+
+Efron and Morris selected 18 major-league batters from the 1970 season — all the players who had recorded exactly 45 at-bats by a fixed date in early May. Each player's batting average over those first 45 at-bats was treated as $y_i$, the noisy observation. The true skill of each player was estimated to be his batting average over the *remainder* of the season (roughly 400 additional at-bats), which served as $\theta_i$. The question: given $y_1, \ldots, y_{18}$, which estimator best predicts $\theta_1, \ldots, \theta_{18}$?
+
+Three candidate estimators were compared.
+
+- **MLE:** $\hat\theta_i^{\mathrm{MLE}} = y_i$. Each prediction is the player's own early-season average.
+- **Grand mean:** $\hat\theta_i^{\mathrm{GM}} = \bar y$. Predict the league-wide early-season average for every player; ignore individual data entirely.
+- **James–Stein:** $\hat\theta_i^{\mathrm{JS}} = \bar y + c\,(y_i - \bar y)$, with $c$ the data-dependent shrinkage factor of the previous equation. Each prediction is a convex combination of the player's own average and the grand mean.
+
+The grand mean and the MLE bracket the two extremes — full pooling and no pooling — and JS is between them.
+
+The result, measured by total squared prediction error against the end-of-season averages, was that James–Stein dominated the MLE by a factor of more than three; it outperformed the MLE on 15 of the 18 individual players. The grand mean estimator was worst overall but, for a few players whose early averages were unusually extreme, came closer to their true skill than the MLE did. The lesson is not that JS is always best for every player — Roberto Clemente, who batted .400 over his first 45 at-bats and ended the season at .346, was over-shrunk by JS — but that JS is better *on aggregate*, and on aggregate is what total squared loss measures.
+
+The baseball example matters for genomic inference because the setup is structurally identical. Replace "players" with "genes," "batting averages" with "expression-level differences," and "end-of-season averages" with "true gene-level effects estimated from a much larger validation cohort," and the same mathematics applies. The procedures developed in the rest of this lecture — empirical Bayes, the two-groups model, the local FDR — are direct generalizations of the baseball calculation to the setting where the unknown parameters take a richer form than a single batting average.
+
 This is the founding insight of empirical Bayes. When many parallel inferences are conducted under exchangeable conditions, the aggregate of observations carries information about any single one — information that classical, one-at-a-time procedures discard.
 
 ---
@@ -68,6 +84,56 @@ where $g$ is the sampling density and $\pi$ is the prior. With $d$ in the thousa
 > — Efron, [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), Ch. 1.
 
 This is the empirical-Bayes program. In the multiple-testing setting, $\theta_i$ encodes whether gene $i$ is null or alternative, and the prior probability of being null is a single number $\pi_0$ that the histogram of $p$-values (or $z$-scores) makes immediately estimable.
+
+---
+
+## Why is the MLE still used? Estimation, prediction, and choice of loss
+
+Stein's paradox does not say the sample mean is bad. It says the sample mean is inadmissible *under one specific loss function*: total squared error summed over all coordinates,
+
+$$L(\hat{\boldsymbol\theta}, \boldsymbol\theta) = \sum_{i=1}^d (\hat\theta_i - \theta_i)^2.$$
+
+Under this loss, the James–Stein estimator achieves strictly smaller risk than the MLE for every $\boldsymbol\theta$ whenever $d \geq 3$. The key qualifier is *strictly* — and the cost is that every individual coordinate is biased.
+
+A short formulation captures the trade-off:
+
+- *James–Stein* minimizes expected loss aggregated **over all coordinates jointly**.
+- *MLE* minimizes expected loss for **this one coordinate individually**.
+
+The two answer different questions, and which is appropriate depends on the inferential goal.
+
+### Coordinatewise versus joint loss
+
+If the analyst's loss is incurred *one coordinate at a time* — for instance, when each gene's effect size will be reported, cited, and validated independently of the others — the relevant loss is coordinatewise,
+
+$$L_i(\hat\theta_i, \theta_i) = (\hat\theta_i - \theta_i)^2.$$
+
+The MLE is admissible under this loss for each $i$ separately. The unbiasedness of $\hat\theta_i = y_i$ is a property the JS estimator does not have: shrinkage moves $\hat\theta_i^{\mathrm{JS}}$ systematically toward the grand mean, which improves the *sum* of squared errors but degrades any individual estimate. When the published claim is "the estimated effect for gene 4,237 is $\hat\theta_{4237}$" and that single estimate will be evaluated on its own merits, classical estimation remains the right tool.
+
+The settings where JS-style shrinkage dominates are those in which the *aggregate* matters: a 30,000-gene effect-size vector, a 100,000-image classification problem, or a $p \gg n$ regression where the analyst cares about overall predictive performance rather than any single coefficient. In these settings, biasing individual coordinates is a fair trade for reducing the total error.
+
+### Estimation versus prediction
+
+A second axis along which classical and empirical-Bayes methods diverge is the distinction between *estimation* and *prediction*.
+
+- **Estimation** is the recovery of the parameters of the data-generating process — the true effect sizes, the true regression coefficients, the true cell-type proportions. Loss is measured in parameter space.
+- **Prediction** is the forecasting of a future observation $\hat y_* = \mathbf{x}_*^\top \hat{\boldsymbol\beta}$. Loss is measured in observation space.
+
+The bias-variance trade-off is more permissive in prediction than in estimation. An estimator can be substantially biased on individual coefficients yet predict well on aggregate, because errors in $\hat{\boldsymbol\beta}$ partially cancel when projected through the linear predictor onto $\hat y_*$. This is precisely the principle that ridge regression, the LASSO, and the elastic net (Lecture 4) exploit: their predictions can be more accurate than ordinary least squares while their coefficient estimates are visibly worse. James–Stein shrinkage operates by the same mechanism in the parallel-mean problem.
+
+The takeaway: ask what is being predicted, against what loss, before choosing an estimator. A method that is the right tool for prediction may be the wrong tool for inference about a particular parameter, and conversely.
+
+### How does this fit a decision framework?
+
+Both the testing procedures of Lecture 1 and the estimators of this lecture are *decision rules* derived from explicit loss functions. The choices unify into a single sequence:
+
+1. **Choose a loss.** What does an error cost, and is it incurred per test, per coordinate, in aggregate, or in prediction?
+2. **Choose a framework.** Frequentist (no prior), Bayesian (specified prior), or empirical Bayes (prior estimated from the data)?
+3. **Derive the optimal rule.** This is the test, estimator, or prediction procedure to use.
+
+The decision framework introduced in Lecture 1 — Bonferroni, BH, $q$-values — selected procedures under FWER and FDR losses (loss per false positive, weighted by the criterion). The estimation framework of this lecture selects procedures under squared-error losses (per-coordinate or aggregate), with the local FDR appearing as a Bayesian decision rule under 0-1 loss on the null/alternative classification.
+
+The empirical-Bayes machinery is not a replacement for classical estimation but a tool for the specific high-dimensional setting in which (a) the relevant loss is aggregate, (b) many parallel inferences are conducted, and (c) the prior is empirically estimable from the population of estimates. Below that scale — fewer tests, individual reports, confirmatory rather than exploratory inference — MLE remains both natural and (under the relevant loss) optimal.
 
 ---
 
@@ -101,17 +167,105 @@ The decision rule "reject when $\mathrm{fdr}(z) < c$" for some threshold $c$ (of
 
 ---
 
-## A cautionary case: the empirical null
+## The two-groups model on the Golub data
 
-The two-groups model assumes that $f_0$ is known. In a textbook calculation, $z$-scores derived from $t$-statistics with appropriate degrees of freedom are taken to be $N(0,1)$ under the null. Real data frequently fail this assumption.
+The procedure can be made concrete by applying it to the dataset that has accompanied every lecture so far: the 3,051 gene-level $t$-statistics from Golub's ALL/AML comparison (Lab 1). Convert each $t$ to a $z$-score via $z_i = \Phi^{-1}(1 - p_i/2)\cdot \mathrm{sign}(\hat\beta_i)$, where the sign is taken from the direction of the mean difference. The histogram of these 3,051 $z$-scores shows the structure the two-groups model is designed to capture: a central peak roughly resembling $N(0,1)$, and heavy tails on both sides.
 
-Efron analyzed a prostate-cancer microarray study ([Singh et al., 2002](https://doi.org/10.1016/S1535-6108(02)00030-2)) consisting of 6,033 genes measured on 102 patients. The test statistics were converted to $z$-scores, with the expectation that under the null they would follow $N(0,1)$. The empirical histogram had a central peak that was wider than $N(0,1)$ would predict: the appropriate null was closer to $N(\hat\delta_0, \hat\sigma_0^2)$ with $\hat\sigma_0 > 1$.
+### Estimating the mixture
 
-Applying the theoretical $N(0,1)$ null to such data overstates significance. Genes whose $z$-scores fall in the inflated tails of the narrow theoretical null are declared discoveries even though they are consistent with the wider true null. The empirical null — fitted to the central portion of the observed distribution — corrects this by acknowledging that unobserved sources of variation (batch effects, latent population structure, correlation among tests) inflate the effective null variance.
+Fit $\hat f(z)$ nonparametrically — for instance, by kernel density estimation or Lindsey's Poisson regression on binned counts. Assume the theoretical null $f_0(z) = \phi(z)$ (the standard normal density). Estimate
 
-The diagnostic protocol is straightforward: estimate $f_0$ from the central portion of the histogram and verify whether $\hat\sigma_0 \approx 1$. When it is not, use the empirical null in place of the theoretical one. The R package `locfdr` implements the full pipeline.
+$$\hat\pi_0 = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)},\quad \lambda = 0.5,$$
 
-The empirical null is the most important practical lesson of the estimation framework. The same picture that estimates $\pi_0$ and $f_1$ also exposes whether the assumed null was correct in the first place.
+following Storey's method introduced in Lecture 1. In the Golub data, $\hat\pi_0$ comes out near 0.6: roughly 60 percent of the 3,051 genes are estimated to be null, leaving an effective $\hat m_1 \approx 1{,}200$ non-null genes. The proportion non-null is large because ALL and AML are genuinely different diseases — the transcriptomic differences between them are substantial, and that biological reality is visible in the histogram as a flat region whose height is well below one.
+
+### Computing the local FDR
+
+With $\hat\pi_0$, $f_0$, and $\hat f$ in hand,
+
+$$\widehat{\mathrm{fdr}}(z) = \frac{\hat\pi_0\, f_0(z)}{\hat f(z)}.$$
+
+The curve $\widehat{\mathrm{fdr}}(z)$ is close to 1 for $z$ near zero (almost all of the central peak is null), drops steeply as $|z|$ increases, and approaches zero in the tails. Plotting $\widehat{\mathrm{fdr}}(z)$ as a function of $z$ alongside the histogram produces the diagnostic image that practitioners learn to read: the histogram tells you *what* signal is present; the local FDR curve tells you *which $z$-scores correspond to genes you should believe*.
+
+### Comparison with Lab 1's BH list
+
+Lab 1 reports the Golub gene list obtained by applying BH at FDR $= 0.05$. That list contains a few hundred genes — those with the smallest $p$-values, up to the BH cutoff. Applying the local FDR rule $\widehat{\mathrm{fdr}}(z) < 0.20$ to the same data produces a list of comparable size, with substantial overlap. The two lists differ at the margin: a gene with $z$ just past the BH cutoff but with a local FDR of 0.18 is more confidently non-null than a gene at the BH boundary with a local FDR of 0.35. The local FDR gives the analyst a per-gene confidence that the tail-area BH cannot. Lab 2 walks through this comparison explicitly.
+
+### What the histogram does *not* tell you
+
+It tells you nothing about *which* genes are non-null; only how many, and at what $z$-score they are likely to live. The biological interpretation of any individual significant gene — whether it is in a meaningful pathway, whether it is independently validated, whether the direction of effect makes mechanistic sense — is a separate step that no statistical procedure can supply. The role of the empirical-Bayes machinery is to produce a list short enough to validate experimentally and confidently enough labeled to be worth the effort.
+
+---
+
+## Empirical Bayes in practice: limma's variance shrinkage
+
+The two-groups model applies empirical Bayes to a *binary* parameter (null versus alternative). The same logic applies to continuous parameters, and the most widely used instance of it in genomics is the variance shrinkage performed by the `limma` package ([Smyth, 2004](https://doi.org/10.2202/1544-6115.1027)).
+
+### The problem limma solves
+
+Consider a microarray experiment with $n$ samples and $p$ genes — for the Golub data, $n = 72$ and $p = 3{,}051$. A standard analysis applies a two-sample $t$-test gene by gene, comparing groups A and B. For gene $g$ the $t$-statistic is
+
+$$t_g = \frac{\bar y_{g,A} - \bar y_{g,B}}{s_g\, \sqrt{1/n_A + 1/n_B}},$$
+
+where $s_g$ is the sample standard deviation of gene $g$'s expression values across all samples. The problem is that $s_g$, estimated from at most a few dozen observations, is itself extremely noisy. A gene whose true variance happens to be small will, by chance, occasionally produce an $s_g$ that is even smaller — and the resulting $t$-statistic will be artificially large. In a high-dimensional experiment with thousands of genes, the gene at the top of the list ordered by $t$-statistic is more likely to be a gene with an underestimated variance than a gene with a genuinely large effect.
+
+### The shrinkage estimator
+
+The limma fix is to treat the gene-level variances $\sigma_g^2$ as draws from a shared prior distribution — an inverse-chi-squared with parameters $(d_0, s_0^2)$ — and to update each gene's variance estimate by conjugacy. The posterior mean of $\sigma_g^2$ given the observed $s_g^2$ is
+
+$$\tilde s_g^2 = \frac{d_0\, s_0^2 + d_g\, s_g^2}{d_0 + d_g},$$
+
+a weighted average of the individual sample variance $s_g^2$ (with $d_g$ residual degrees of freedom) and the prior estimate $s_0^2$ (with $d_0$ degrees of freedom). The prior parameters $(d_0, s_0^2)$ are estimated from the *population* of observed sample variances — empirical Bayes, exactly as in the two-groups model.
+
+The moderated $t$-statistic uses $\tilde s_g$ in place of $s_g$:
+
+$$\tilde t_g = \frac{\bar y_{g,A} - \bar y_{g,B}}{\tilde s_g\, \sqrt{1/n_A + 1/n_B}}.$$
+
+The moderated statistic is more conservative for genes with anomalously small $s_g$ (because $\tilde s_g > s_g$ in that case) and more sensitive for genes with anomalously large $s_g$ (because $\tilde s_g < s_g$ then). The reference distribution under the null is a $t$ with $d_0 + d_g$ degrees of freedom rather than $d_g$ alone — additional degrees of freedom from the borrowing.
+
+### Why this matters in practice
+
+The empirical-Bayes shrinkage of variance estimates is the single most important methodological improvement in microarray-era differential expression analysis. Genes that would have been falsely declared significant on the basis of a coincidentally small $s_g$ are no longer. Genes whose effects are genuine but whose $s_g$ happens to be large are not penalized as severely. The net effect on the discovery list — at constant FDR — is a substantial reduction in both false positives and false negatives, and the procedure has become the default in RNA-seq pipelines (via the related `voom` and `edgeR` packages) as well as in the original microarray setting.
+
+The structural identity with the rest of this lecture is the point. The two-groups model uses the histogram of $z$-scores to learn the prior probability that any individual gene is null. `limma` uses the histogram of *variance estimates* to learn the prior on gene-level variance. Both are empirical Bayes; both produce more accurate per-test inference by pooling information across the population of tests. Lab 2 and the homework apply `limma::eBayes` to the Golub data directly; this section provides the conceptual justification.
+
+---
+
+## A cautionary case: the Singh prostate-cancer reanalysis
+
+The two-groups model assumes that $f_0$ is known. In a textbook calculation, $z$-scores derived from $t$-statistics with appropriate degrees of freedom are taken to be $N(0,1)$ under the null. Real data frequently fail this assumption — and the failure is diagnosable from the same histogram that everything else in this lecture is read from.
+
+### The original analysis
+
+[Singh and colleagues (2002)](https://doi.org/10.1016/S1535-6108(02)00030-2) profiled 6,033 genes by microarray on 102 prostate samples: 50 from histologically normal prostate tissue and 52 from prostate-cancer specimens. The original analysis applied a two-sample $t$-test gene by gene and reported the genes that crossed a conventional significance threshold. The natural empirical-Bayes follow-up — taken up by Efron in [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), Ch. 6 — is to convert the $t$-statistics to $z$-scores, fit the two-groups mixture, and report the local FDR.
+
+### The diagnostic
+
+When the $z$-scores are plotted as a histogram, the central peak should be visually indistinguishable from a $N(0,1)$ density — that is what the theoretical null says it should be. In the Singh data the peak is visibly wider. The empirical histogram is unimodal and approximately symmetric around zero, but with a standard deviation closer to 1.1–1.2 than to 1.0; in [Efron's analysis](https://doi.org/10.1198/016214504000000089), the maximum-likelihood empirical null estimated from the central portion of the data has
+
+$$\hat\delta_0 \approx -0.02, \qquad \hat\sigma_0 \approx 1.10.$$
+
+A $\hat\sigma_0$ of 1.10 may sound small, but its consequences for tail-area inference are large. The theoretical $N(0,1)$ density assigns probability $2 \cdot 10^{-7}$ to the event $|Z| \geq 5$; under $N(0, 1.10^2)$ the same event has probability $4 \cdot 10^{-6}$ — a twentyfold inflation. Genes that look like extreme outliers under the theoretical null are well within the body of the empirical null.
+
+### The consequence
+
+Under the theoretical $N(0,1)$ null, the local FDR identifies a relatively large set of "non-null" genes at $\mathrm{fdr}(z) < 0.20$. Under the empirical null — fit to the central peak of the histogram — that list shrinks substantially: the same genes are now consistent with the wider null and no longer surpass the FDR threshold. The original analysis, conducted under the implicit assumption of a unit-variance null, *overstated discovery*. The empirical-null analysis returns a smaller, more credible list.
+
+The mechanism is the one introduced earlier in the lecture: unobserved sources of variation — batch effects, latent population structure, correlation among tests — inflate the effective null variance. The empirical null acknowledges this by fitting $f_0$ to the central portion of the histogram rather than assuming $N(0,1)$.
+
+### The protocol
+
+The diagnostic is mechanical and should be part of any local-FDR workflow:
+
+1. Convert test statistics to $z$-scores.
+2. Estimate $\hat f(z)$ nonparametrically (Lindsey's method or a smooth histogram).
+3. Fit $f_0(z) = N(\hat\delta_0, \hat\sigma_0^2)$ to the central portion of the observed distribution (typically $|z| < 2$ or via a maximum-likelihood fit to the central peak).
+4. Check whether $\hat\sigma_0 \approx 1$ and $\hat\delta_0 \approx 0$.
+5. If yes, the theoretical null is adequate; if no, use the empirical null in place of $N(0,1)$ to compute $\mathrm{fdr}(z)$.
+
+The R package `locfdr` automates the procedure; Python implementations follow the same recipe.
+
+The Singh case is not an isolated curiosity. In Efron's analyses of multiple microarray and proteomic datasets, $\hat\sigma_0 > 1$ is the common outcome rather than the exception. The empirical null is the most important practical lesson of the estimation framework, and the same picture that estimates $\pi_0$ and $f_1$ also exposes whether the assumed null was correct in the first place.
 
 ---
 
