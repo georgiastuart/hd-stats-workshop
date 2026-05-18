@@ -71,30 +71,72 @@ In 1991, [Turk and Pentland](https://doi.org/10.1162/jocn.1991.3.1.71) applied p
 The idea is now ubiquitous. In single-cell genomics, where 30,000 transcript abundances per cell are typical, the standard pipeline begins by compressing the expression matrix to 30 to 50 principal components before any clustering, embedding, or downstream analysis. What worked for faces works, with appropriate modifications, for cells, tissues, brain images, and protein structures. The unifying assumption is that high-dimensional data often live near a low-dimensional manifold; the methods of this lecture identify that manifold and project the data onto it.
 
 ```{python}
-#| label: fig-lowrank-reconstruction
+#| label: fig-eigenfaces
 #| echo: false
-#| fig-cap: "Low-rank reconstruction by SVD. A 64×64 structured image (Gaussian-blob mixture) is decomposed by SVD and reconstructed at $k = 1, 5, 20, 40$ singular components. The leading components capture the broad structure; subsequent components add detail. Beyond a few dozen components the additional contribution is negligible — the image lives near a low-dimensional manifold even though it has 4,096 pixels. Eigenfaces obey the same pattern."
-#| fig-height: 3.2
-# Build a 64x64 structured image: superposition of a few 2D Gaussians
-gx, gy = np.meshgrid(np.linspace(-1, 1, 64), np.linspace(-1, 1, 64))
-img = (
-    np.exp(-((gx + 0.3) ** 2 + (gy - 0.2) ** 2) / 0.15)
-    + 0.7 * np.exp(-((gx - 0.4) ** 2 + (gy + 0.3) ** 2) / 0.20)
-    + 0.4 * np.exp(-((gx) ** 2 + (gy + 0.6) ** 2) / 0.10)
-)
-img = img + 0.05 * rng.normal(size=img.shape)
-U_img, S_img, Vt_img = np.linalg.svd(img, full_matrices=False)
-ks = [1, 5, 20, 40]
-fig, axes = plt.subplots(1, len(ks) + 1, figsize=(11, 2.7))
-axes[0].imshow(img, cmap="gray"); axes[0].set_title("Original (64×64)")
-axes[0].axis("off")
-for ax, k in zip(axes[1:], ks):
-    approx = (U_img[:, :k] * S_img[:k]) @ Vt_img[:k]
-    err = np.linalg.norm(img - approx, "fro") / np.linalg.norm(img, "fro")
-    ax.imshow(approx, cmap="gray"); ax.axis("off")
-    ax.set_title(f"$k = {k}$\nrel. err = {err:.2f}")
-plt.tight_layout()
-plt.show()
+#| warning: false
+#| fig-cap: "Eigenfaces on the Olivetti faces database (400 photographs of 40 subjects, $64 \\times 64$ pixels). **Top row:** four example faces from the database — these are typical \"data points,\" each lives in a 4,096-dimensional pixel space. **Middle row:** the first eight eigenfaces. Each is one of the leading principal components $V_j$ of the centered $400 \\times 4{,}096$ pixel matrix, rendered as a $64 \\times 64$ image. The eigenfaces capture broad structural axes — lighting, head orientation, presence of glasses — rather than identifying individuals. **Bottom row:** reconstruction of one face from increasing numbers of components ($k = 1, 5, 25, 100$). Ten coefficients already recover a recognizable face; 100 give an excellent likeness despite reducing the dimensionality 40-fold. The same low-rank-plus-noise structure that Turk and Pentland exploited for faces holds for gene-expression matrices: most of the meaningful variation lives in a small number of principal directions."
+#| fig-height: 4.6
+try:
+    from sklearn.datasets import fetch_olivetti_faces
+    faces = fetch_olivetti_faces(shuffle=False, random_state=0)
+    F = faces.data                  # 400 x 4096
+    F_centered = F - F.mean(axis=0)
+    U_f, S_f, Vt_f = np.linalg.svd(F_centered, full_matrices=False)
+    img_shape = (64, 64)
+
+    fig = plt.figure(figsize=(10, 5.6))
+    gs = fig.add_gridspec(3, 8, hspace=0.35, wspace=0.15)
+
+    # Row 1: four example faces from different subjects
+    examples = [0, 100, 200, 300]
+    for k, idx in enumerate(examples):
+        ax = fig.add_subplot(gs[0, 2 * k:2 * k + 2])
+        ax.imshow(faces.images[idx], cmap="gray")
+        ax.axis("off")
+        if k == 0:
+            ax.set_title("Example faces", loc="left", fontsize=10)
+
+    # Row 2: first eight eigenfaces
+    for k in range(8):
+        ax = fig.add_subplot(gs[1, k])
+        ef = Vt_f[k].reshape(img_shape)
+        vmax = float(np.max(np.abs(ef)))
+        ax.imshow(ef, cmap="gray", vmin=-vmax, vmax=vmax)
+        ax.axis("off")
+        ax.set_title(f"PC{k + 1}", fontsize=9)
+    fig.text(0.02, 0.55, "First 8 eigenfaces", rotation=90,
+             fontsize=10, va="center")
+
+    # Row 3: reconstructions of one face at increasing k
+    target = F_centered[100]
+    mean_face = F.mean(axis=0)
+    ks = [1, 5, 25, 100]
+    for k, k_components in enumerate(ks):
+        ax = fig.add_subplot(gs[2, 2 * k:2 * k + 2])
+        recon = (U_f[100, :k_components] * S_f[:k_components]) @ Vt_f[:k_components] + mean_face
+        ax.imshow(recon.reshape(img_shape), cmap="gray")
+        ax.axis("off")
+        ax.set_title(f"$k = {k_components}$", fontsize=10)
+    fig.text(0.02, 0.18, "Reconstruction", rotation=90,
+             fontsize=10, va="center")
+
+    plt.show()
+except Exception:
+    # Fallback: synthetic illustration if Olivetti is unavailable at render time
+    gx, gy = np.meshgrid(np.linspace(-1, 1, 64), np.linspace(-1, 1, 64))
+    img = (np.exp(-((gx + 0.3) ** 2 + (gy - 0.2) ** 2) / 0.15)
+           + 0.7 * np.exp(-((gx - 0.4) ** 2 + (gy + 0.3) ** 2) / 0.20)
+           + 0.4 * np.exp(-((gx) ** 2 + (gy + 0.6) ** 2) / 0.10))
+    img = img + 0.05 * rng.normal(size=img.shape)
+    U_img, S_img, Vt_img = np.linalg.svd(img, full_matrices=False)
+    fig, axes = plt.subplots(1, 5, figsize=(11, 2.7))
+    axes[0].imshow(img, cmap="gray"); axes[0].set_title("Original"); axes[0].axis("off")
+    for ax, k_c in zip(axes[1:], [1, 5, 20, 40]):
+        approx = (U_img[:, :k_c] * S_img[:k_c]) @ Vt_img[:k_c]
+        ax.imshow(approx, cmap="gray"); ax.axis("off")
+        ax.set_title(f"$k={k_c}$")
+    plt.tight_layout()
+    plt.show()
 ```
 
 The lecture covers three topics. The first is principal component analysis, including its formal definition, the relationship to the singular value decomposition, and the random-matrix complications that arise in the $p \gg n$ regime. The second is the two principal nonlinear methods for dimension reduction — t-SNE and UMAP — and the systematic ways in which they mislead. The third is a practical workflow that combines the linear and nonlinear methods to obtain useful representations without obvious artifacts.
@@ -173,10 +215,9 @@ Parallel analysis, which compares the observed eigenvalues to those obtained by 
 ```{python}
 #| label: fig-permutation-null
 #| echo: false
-#| fig-cap: "Parallel analysis for the Golub data. Each column (gene) is permuted independently to destroy any cross-gene structure while preserving the marginal variance. The leading eigenvalue of the resulting noise-only covariance is plotted as a histogram across 200 permutations (gray). The observed leading eigenvalue (red dashed line) lies far above the permutation null — the first principal component is real signal, not noise."
-#| fig-height: 3.2
+#| fig-cap: "Parallel analysis for the Golub data. Each column (gene) is permuted independently to destroy any cross-gene structure while preserving the marginal variance. The leading eigenvalue of the resulting noise-only covariance is plotted as a histogram across 200 permutations (gray). The observed leading eigenvalue (red dashed line) is roughly an *order of magnitude* larger than what permutation would predict — the first principal component is real signal, not noise. The x-axis is on a log scale to make both ranges visible in a single panel."
+#| fig-height: 3.4
 n_perm = 200
-n_pcs_pa = 5
 perm_lead = np.zeros(n_perm)
 for b in range(n_perm):
     Xp = X_std.copy()
@@ -185,15 +226,21 @@ for b in range(n_perm):
     s = np.linalg.svd(Xp, compute_uv=False)[:1]
     perm_lead[b] = (s[0] ** 2) / (n_samples - 1)
 observed_lead = golub_eigs[0]
-fig, ax = plt.subplots(figsize=(8, 3.2))
-ax.hist(perm_lead, bins=30, color="#999", edgecolor="white", alpha=0.85,
-        label=f"Leading eigenvalue under permutation (n={n_perm})")
+
+xmin = max(0.5 * perm_lead.min(), 1.0)
+xmax = observed_lead * 1.15
+bins = np.logspace(np.log10(xmin), np.log10(xmax), 50)
+fig, ax = plt.subplots(figsize=(9, 3.4))
+ax.hist(perm_lead, bins=bins, color="#888", edgecolor="white", alpha=0.85,
+        label=f"Leading eigenvalue under permutation\n($n={n_perm}$ permutations; mean = {perm_lead.mean():.1f})")
 ax.axvline(observed_lead, color="#c0504d", lw=2, linestyle="--",
-           label=f"Observed leading eigenvalue = {observed_lead:.1f}")
-ax.set_xlabel("Leading eigenvalue")
+           label=f"Observed = {observed_lead:.1f}")
+ax.set_xscale("log")
+ax.set_xlim(xmin, xmax)
+ax.set_xlabel("Leading eigenvalue (log scale)")
 ax.set_ylabel("Permutation count")
 ax.set_title("Parallel analysis: is the first PC above the noise floor?")
-ax.legend(loc="upper center", fontsize=10, frameon=False)
+ax.legend(loc="upper center", fontsize=9, frameon=False)
 plt.tight_layout()
 plt.show()
 ```
@@ -202,15 +249,15 @@ plt.show()
 
 ## The detection phase transition
 
-A more profound limitation of PCA in the $p \gg n$ regime was established by [Baik, Ben Arous, and Péché (2005)](https://doi.org/10.1214/009117905000000233). For a signal-plus-noise model in which the population covariance matrix has a single spike of magnitude $\ell$ above the identity baseline, the leading eigenvalue of the sample covariance matrix is detectable, in the asymptotic limit $p/n \to \gamma$, only if
+The Marchenko–Pastur result describes the *bulk* — the range in which all eigenvalues fall when the data are pure noise. The natural follow-up question is: when does a real signal *escape* the bulk and become visible as a leading eigenvalue?
 
-$$\ell > 1 + \sqrt\gamma.$$
+That question has a sharp answer. [Baik, Ben Arous, and Péché (2005)](https://doi.org/10.1214/009117905000000233) studied the signal-plus-noise model in which the population covariance has a single spike of magnitude $\ell$ above the identity baseline. In the asymptotic limit $p/n \to \gamma$, the leading eigenvalue of the sample covariance is *detectable* (exceeds the Marchenko–Pastur upper edge $(1+\sqrt\gamma)^2$) only if
 
-Below this threshold, the signal eigenvalue is absorbed into the bulk noise spectrum and becomes indistinguishable from a noise eigenvalue. The leading sample principal component, in such cases, has zero asymptotic correlation with the true signal direction.
+$$\ell > 1 + \sqrt\gamma. \qquad \text{(BBP detection threshold)}$$
 
-The numerical implications are sobering. With $p = 10{,}000$ and $n = 100$, $\gamma = 100$ and the threshold is $1 + \sqrt{100} = 11$. A signal of magnitude smaller than 11 (relative to the noise variance of 1) is, in the asymptotic limit, undetectable by PCA — no matter how cleverly the analysis is performed. The threshold is a property of the geometry of the problem, not of any particular procedure.
+Below this threshold, the signal eigenvalue is absorbed into the bulk and is indistinguishable from a noise eigenvalue. The leading sample principal component, in such cases, has *zero* asymptotic correlation with the true signal direction — not "noisy but informative," but actually orthogonal to it on average. The threshold is a property of the geometry of the $(p, n)$ problem; no procedure can detect signals below it.
 
-The result has practical consequences. In single-cell genomics, where tens of thousands of genes are measured on hundreds or thousands of cells, the leading principal components reflect the strongest biological structure (cell type, developmental stage), but weaker structure may lie below the detection limit and require additional information — for example, prior knowledge of marker genes — to recover.
+**Numerical example: the Golub data.** With $p = 3{,}051$ genes and $n = 72$ samples, $\gamma = p/n \approx 42.4$, so the BBP threshold sits at $\ell^* = 1 + \sqrt{42.4} \approx 7.5$ and the Marchenko–Pastur upper edge at $(1+\sqrt{42.4})^2 \approx 57$. The observed leading eigenvalue is roughly $478$ (see the parallel-analysis figure above) — *eight times above the bulk's upper edge*. There is no question that the first principal component captures real biological structure on this dataset. The same calculation in single-cell genomics, where $\gamma$ can be much larger, sets a much higher bar: weaker biological structure may lie below the detection limit and require prior knowledge (marker genes, batch labels) to recover.
 
 ```{python}
 #| label: fig-bbp-transition
@@ -262,41 +309,63 @@ plt.show()
 
 ## Biplots: reading PCA visually
 
-The biplot is a simultaneous visualization of sample scores and variable loadings on a single set of axes. The scores show the projected positions of the samples in the first two principal components; arrows superimposed on the same axes indicate the loading of each variable on those components. Arrows pointing in the same direction as a cluster of points identify the variables that drive the cluster's separation along the relevant axes.
+A biplot superimposes two pictures on a single set of axes:
 
-The interpretation is geometric and therefore concrete. If a cluster of samples lies in the upper right of the biplot, and the arrows for genes A and B point in that direction, then A and B are highly expressed in that cluster relative to the rest. The biplot offers something neither PCA scores nor loadings alone provide: a single picture in which the data and the variables that organize them appear together.
+- The **sample scores** $Z = XV$, plotted in the leading two principal-component coordinates (the dots).
+- The **variable loadings** $V$, plotted as arrows from the origin (one arrow per variable, scaled into the score-coordinate system for visibility).
+
+The interpretation is geometric and concrete. Each gene's loading vector $(V_{j,1}, V_{j,2})$ has two complementary readings:
+
+- **Direction.** An arrow pointing along $+\hat{e}_1$ (the PC1 axis) identifies a gene whose expression separates the samples along PC1; an arrow pointing along $+\hat{e}_2$ identifies a gene that separates along PC2. Arrows pointing diagonally identify genes that contribute to both.
+- **Length.** The magnitude $\sqrt{V_{j,1}^2 + V_{j,2}^2}$ quantifies how much that gene contributes to the leading two components. Long arrows = important genes; short arrows = uninformative ones.
+- **Sample co-location.** A sample sitting in the same quadrant as a gene's arrow has *above-average* expression of that gene; a sample in the opposite quadrant has *below-average* expression. The biplot answers two questions simultaneously: *where do the samples sit?* (the scatter) and *which genes drive that placement?* (the arrows).
+
+The figure below picks the top genes by the combined contribution $\sqrt{V_{j,1}^2 + V_{j,2}^2}$, so the arrows spread across all four quadrants rather than clustering on a single axis.
 
 ```{python}
 #| label: fig-biplot
 #| echo: false
-#| fig-cap: "Biplot of the Golub data. Sample scores on PC1 and PC2 (dots, colored by leukemia subtype) and the eight genes with the largest absolute PC1 loading (arrows, scaled for visibility). Arrows pointing toward the AML cluster identify genes that are highly expressed in AML relative to ALL; arrows in the opposite direction identify ALL-up genes. Reading the biplot answers two questions simultaneously: *where do the samples sit?* (the scatter) and *which genes drive the separation?* (the arrows)."
-#| fig-height: 4.2
-loadings = pca_full.components_.T  # genes x components
-score_scale = np.percentile(np.abs(golub_scores[:, :2]), 99)
-load_scale = np.percentile(np.abs(loadings[:, :2]), 99)
-arrow_scale = score_scale / load_scale * 0.85
+#| fig-cap: "Biplot of the Golub data. **Dots:** sample scores on PC1 vs PC2, colored by leukemia subtype. **Arrows:** the eight genes with the largest contribution to the leading two PCs, computed as $\\sqrt{V_{j,1}^2 + V_{j,2}^2}$. Arrows pointing right toward the AML cluster identify genes whose expression is *higher* in AML; arrows pointing left identify genes higher in ALL. Arrows pointing up or down identify genes that vary along PC2 (a different axis of variation among the same samples). Long arrows = strong contribution to the first two PCs; short arrows = uninformative for this projection."
+#| fig-height: 4.4
+loadings = pca_full.components_.T   # genes x components
+# Importance = norm of (PC1, PC2) loading; selects arrows that spread across quadrants
+loading_norm = np.sqrt(loadings[:, 0] ** 2 + loadings[:, 1] ** 2)
+top_genes = np.argsort(loading_norm)[-8:]
 
-top_pc1 = np.argsort(np.abs(loadings[:, 0]))[-8:]
+# Scale arrows so the longest arrow reaches ~85% of the score-cloud edge
+score_extent = float(np.percentile(np.abs(golub_scores[:, :2]), 99))
+arrow_scale = score_extent / loading_norm[top_genes].max() * 0.85
 
-fig, ax = plt.subplots(figsize=(9, 4.2))
+fig, ax = plt.subplots(figsize=(9, 4.4))
 ax.scatter(golub_scores[all_mask, 0], golub_scores[all_mask, 1],
-           s=70, color="#3b78cc", label="ALL", edgecolor="white", linewidth=0.6)
+           s=80, color="#3b78cc", label="ALL", edgecolor="white", linewidth=0.7)
 ax.scatter(golub_scores[aml_mask, 0], golub_scores[aml_mask, 1],
-           s=70, color="#c0504d", label="AML", edgecolor="white", linewidth=0.6)
-for g in top_pc1:
+           s=80, color="#c0504d", label="AML", edgecolor="white", linewidth=0.7)
+for g in top_genes:
     lx, ly = loadings[g, 0] * arrow_scale, loadings[g, 1] * arrow_scale
     ax.annotate("", xy=(lx, ly), xytext=(0, 0),
-                arrowprops=dict(arrowstyle="->", color="#444", lw=1.2))
-    ax.text(lx * 1.08, ly * 1.08, str(gene_names[g])[:14],
-            fontsize=8, color="#222")
+                arrowprops=dict(arrowstyle="->", color="#444", lw=1.3))
+    # Place gene label just past the arrow tip
+    pad = 1.1
+    ax.text(lx * pad, ly * pad, str(gene_names[g])[:14],
+            fontsize=8.5, color="#222",
+            ha="left" if lx >= 0 else "right",
+            va="bottom" if ly >= 0 else "top")
 ax.axhline(0, color="#ddd", lw=0.6); ax.axvline(0, color="#ddd", lw=0.6)
 ax.set_xlabel(f"PC1 ({pca_full.explained_variance_ratio_[0]*100:.1f}% var)")
 ax.set_ylabel(f"PC2 ({pca_full.explained_variance_ratio_[1]*100:.1f}% var)")
-ax.set_title("Golub biplot: samples + top-8 PC1-loading genes")
+ax.set_title("Golub biplot: top genes by combined PC1+PC2 contribution")
 ax.legend(loc="upper right", frameon=False, fontsize=10)
 plt.tight_layout()
 plt.show()
 ```
+
+Reading the Golub biplot:
+
+- The dots show that ALL and AML samples separate primarily along PC1 (horizontal), with secondary variation along PC2 (vertical).
+- Genes whose arrows point right are *up* in AML; genes whose arrows point left are *up* in ALL. These are the genes that drive the disease-subtype separation.
+- Genes whose arrows point up or down are *not* informative for the ALL/AML axis — they vary along a different latent factor (likely sample-quality or batch variation reflected in PC2).
+- A short arrow means the gene is, in the PC1–PC2 plane, near the origin: it carries little structure in this two-dimensional projection. Such genes are not necessarily uninteresting overall; they simply do not load on the *leading* components.
 
 ---
 
@@ -357,19 +426,61 @@ else:
 
 ---
 
-## t-SNE, UMAP, and diffusion maps
+## t-SNE: preserve local neighbors at the expense of global geometry
 
 t-SNE ([van der Maaten and Hinton, 2008](https://jmlr.org/papers/v9/vandermaaten08a.html)) constructs pairwise affinities $p_{ij}$ in the high-dimensional space using Gaussian kernels and matches them to affinities $q_{ij}$ in the low-dimensional space using a Student-$t$ distribution. The objective is the Kullback–Leibler divergence
 
 $$\mathrm{KL}(P \| Q) = \sum_{i \neq j} p_{ij} \log \frac{p_{ij}}{q_{ij}},$$
 
-minimized by gradient descent. The heavy tails of the Student-$t$ distribution in low dimensions allow points that are far apart in the original space to be pushed even further apart in the embedding, which improves cluster separation. Two parameters dominate behavior: the perplexity, which controls the effective number of neighbors used to construct $p_{ij}$, and the number of optimization iterations.
+minimized by gradient descent. The heavy tails of the Student-$t$ distribution in low dimensions allow points that are far apart in the original space to be pushed even further apart in the embedding, which improves cluster separation.
 
-UMAP ([McInnes, Healy, and Melville, 2018](https://arxiv.org/abs/1802.03426)) constructs a fuzzy simplicial complex in the high-dimensional space — a weighted graph encoding local neighbor relationships — and optimizes a low-dimensional layout to match. Compared to t-SNE, UMAP tends to preserve global structure somewhat better, scales more favorably to large $n$, and admits a theoretical interpretation in terms of Riemannian geometry and algebraic topology. Two principal parameters: `n_neighbors`, analogous to perplexity, and `min_dist`, which controls how tightly points cluster in the embedding.
+**What t-SNE preserves.** Local neighbor identities: if $i$ and $j$ are among each other's $k$ nearest neighbors in the high-dimensional space, they tend to be nearby in the embedding. Within-cluster structure is well captured.
 
-Diffusion maps ([Coifman and Lafon, 2006](https://doi.org/10.1016/j.acha.2006.04.006)) constitute a third nonlinear method, based on the spectral decomposition of a Markov transition matrix on the data graph. The leading eigenvectors of this matrix provide low-dimensional coordinates that respect the diffusion geometry of the manifold; the method is particularly natural for data with continuous trajectory structure.
+**What t-SNE distorts.** Global geometry — distances between clusters, sizes of clusters, and the existence of clusters in uniformly-distributed data. Two well-separated groups in the embedding may have been adjacent in the original; a single connected population may have been split. The output is reproducible only up to the random seed.
 
-The three methods differ in their commitments. PCA preserves variance and is linear and deterministic. t-SNE preserves local neighbor identities at the expense of global geometry. UMAP balances local and global structure with greater fidelity than t-SNE in most settings. Diffusion maps preserve a particular notion of intrinsic geometry. None is uniformly best; the choice depends on the structure to be exposed.
+### What "perplexity" actually means
+
+Two parameters dominate t-SNE's behavior: the **perplexity** and the number of optimization iterations. Perplexity is a measure of the *effective number of neighbors* each point sees in the high-dimensional pairwise affinity calculation.
+
+Concretely, for each point $i$ the conditional probabilities $p_{j\mid i}$ are computed using a Gaussian kernel with point-specific bandwidth $\sigma_i$,
+
+$$p_{j\mid i} = \frac{\exp\!\big(-\|x_i - x_j\|^2 / (2\sigma_i^2)\big)}{\sum_{k \neq i}\exp\!\big(-\|x_i - x_k\|^2 / (2\sigma_i^2)\big)},$$
+
+and $\sigma_i$ is chosen so that the **Shannon entropy** of $\{p_{j\mid i}\}_j$ satisfies $2^{H(P_i)} = \mathrm{perplexity}$. The right-hand side has a clean interpretation: a perplexity of $k$ means each point's affinity distribution behaves like a roughly uniform distribution over $k$ neighbors. Low perplexity → small $\sigma_i$ → only the few nearest neighbors contribute → fine local structure but fragmented global view. High perplexity → large $\sigma_i$ → many points contribute → smoother but more globally averaged embedding. Default values in `sklearn.manifold.TSNE` and the original paper are between 5 and 50; as perplexity approaches the sample size $n$, the method begins to behave like global Gaussian smoothing.
+
+---
+
+## UMAP: faster, with more global structure retained
+
+UMAP ([McInnes, Healy, and Melville, 2018](https://arxiv.org/abs/1802.03426)) constructs a *fuzzy simplicial complex* in the high-dimensional space — a weighted graph encoding local neighbor relationships — and optimizes a low-dimensional layout to match. The objective is a binary cross-entropy on edge weights rather than a KL divergence on point-level affinities, and the optimization is stochastic-gradient on a sampled subset of edges, which is why UMAP runs much faster than t-SNE on large datasets.
+
+**What UMAP preserves.** Local neighbor identities, like t-SNE; *plus* better preservation of global relationships between groups, owing to the cross-entropy formulation and the explicit connectivity constraint.
+
+**What UMAP distorts.** The same distortions as t-SNE, in milder form: distances and cluster sizes are still not quantitatively meaningful, and parameter choices can split a single population or fuse two distinct ones. UMAP is also stochastic — reproducible only up to a random seed.
+
+**Two principal parameters.** `n_neighbors` (analogous to perplexity — the explicit number of nearest neighbors used to build the local affinity; default 15) and `min_dist` (a lower bound on inter-point distance in the embedding, controlling how tightly clusters are packed; default 0.1). Smaller `n_neighbors` exposes finer local structure; larger emphasizes the global graph.
+
+::: {.callout-note collapse="false"}
+## Diffusion maps and other nonlinear methods
+
+[Coifman and Lafon (2006)](https://doi.org/10.1016/j.acha.2006.04.006) introduced **diffusion maps**, a spectral method based on a Markov transition matrix over the data graph; its eigenvectors give a low-dimensional embedding that respects the *diffusion geometry* of the manifold. Diffusion maps are particularly natural for data with continuous trajectory structure (cell-developmental pseudotime, dynamical-systems trajectories). They are less widely used than t-SNE and UMAP in single-cell pipelines but remain the right tool when the underlying biology *is* continuous rather than clustered.
+:::
+
+**Comparison at a glance.**
+
+| Property | PCA | t-SNE | UMAP |
+|---|---|---|---|
+| Linear? | Yes | No | No |
+| Deterministic? | Yes (up to sign) | No | No |
+| Preserves global structure? | Optimal under squared loss | Poorly | Moderately |
+| Preserves local structure? | Sometimes | Yes | Yes |
+| Cluster *count* meaningful? | N/A | No | No |
+| Cluster *sizes* meaningful? | N/A | No | No |
+| Inter-cluster *distances* meaningful? | Yes (in score space) | No | No |
+| Scales to $n \gtrsim 10{,}000$? | Easily | Slowly | Easily |
+| Interpretable axes? | Yes (loadings) | No | No |
+
+None of the methods is uniformly best. The choice depends on the question; the next section makes the selection criteria explicit.
 
 ```{python}
 #| label: fig-tsne-perplexity
@@ -469,35 +580,62 @@ plt.show()
 
 ---
 
-## Cautions
+## Diagnostics: how to select a method and evaluate whether it is working
 
-A small set of conclusions are systematically invalid from t-SNE or UMAP plots alone:
+The procedures above each succeed on data that match their assumptions and fail on data that do not. The defensible analytic posture treats *which method* and *which parameter settings* as decisions to be evaluated, not defaults to be applied. The following diagnostic protocol — exercised in Lab 3 — answers two questions explicitly: *which method should I use here?* and *how do I know the result is real?*
 
-- "These two clusters are far apart" — distances between clusters are not reliably preserved.
-- "This cluster is larger or denser than that one" — cluster sizes in the embedding are not preserved.
-- "There are exactly $k$ clusters" — apparent clusters can be artifacts of perplexity, initialization, or convergence.
-- "The trajectory runs from A to B" — without quantitative validation, trajectory inferences from embeddings are speculative.
+### Selecting a method
 
-The general rule: nonlinear embeddings are tools for *exploration*. Quantitative claims about the geometry of the data — distances, sizes, counts of clusters, trajectories — require validation by other methods.
+The selection question reduces to three sub-questions, asked in order.
 
-A related caution applies to PCA itself. In the $p \gg n$ regime, the Marchenko–Pastur law inflates eigenvalues even under pure noise: with $\gamma = 200$, the leading noise eigenvalue can exceed $(1+\sqrt{200})^2 \approx 229$ on the covariance scale. A leading PC that explains 15 percent of the total variance is impressive against the naive baseline of $1/\min(n,p) \approx 1$ percent expected under independence, but the proper baseline in the $p \gg n$ regime is the Marchenko–Pastur upper edge, not the naive one. Scree plots and parallel analysis remain the most reliable diagnostics.
+1. **Do I need interpretable axes?** If yes, use PCA. PCA's loadings identify which variables contribute to each component; the axes are *the* directions of maximal variance and are recoverable. t-SNE and UMAP have no such interpretation — the coordinate values in the embedding are meaningless in isolation.
+2. **Is the structure I care about linear or nonlinear?** Test by applying PCA first. If the structure I want to see appears in the leading two or three principal components — separation between known groups, an interpretable gradient, a clear elbow in the scree plot — PCA is sufficient. If the leading PCs are uninformative but a non-trivial structure plausibly exists (curved manifolds, branching trajectories, tight local neighborhoods), a nonlinear method is warranted.
+3. **Am I willing to give up reproducibility for global structure visualization in 2D?** If yes, use UMAP or t-SNE on the top $k$ PCs. If no, stick with PCA. UMAP is the modern default in single-cell pipelines; t-SNE remains common in older codebases.
 
----
+The recommended pipeline — **standardize → PCA to $k$ → nonlinear embed on the top $k$ PCs** — works because each step controls a separate failure mode: standardization removes scale-dominance artifacts, PCA removes high-dimensional noise that distorts nonlinear methods, and the nonlinear step exposes structure that PCA cannot.
 
-## Connections to factor models
+### Evaluating whether the result is real
 
-PCA is closely related to the linear factor model
+For each method in the pipeline there is at least one diagnostic that asks: *would this output appear under noise, under different settings, or under different randomness?* If the answer is yes, the apparent structure is not trustworthy.
 
-$$X = FL^\top + E,$$
+**For PCA — is the leading component above the noise floor?**
 
-in which $F$ ($n \times k$) contains factor scores, $L$ ($p \times k$) contains factor loadings, and $E$ contains noise. When the noise is homoscedastic ($E_{ij} \sim N(0,\sigma^2)$), PCA recovers the factors. When the noise is heteroscedastic, *probabilistic PCA* and *factor analysis* are more appropriate. In genomics, surrogate variable analysis (SVA) extends this framework to estimate latent confounders that distort gene-level inferences if left uncontrolled.
+The Marchenko–Pastur upper edge $(1+\sqrt\gamma)^2$ and the BBP detection threshold give analytical baselines, but the most robust diagnostic in practice is **parallel analysis**: permute each gene's expression vector across samples to destroy any cross-gene structure (preserving only marginal variance), refit PCA, and compare the observed leading eigenvalue to the permutation distribution. If the observed eigenvalue is comfortably above the permutation 95th percentile, the first PC reflects real signal. On the Golub data the observed leading eigenvalue ($\approx 478$) sits roughly an order of magnitude above the permutation distribution — unambiguous signal. (See the parallel-analysis figure earlier in this lecture and **Lab 3, Part 3**, which implements the same diagnostic interactively.)
 
-The factor-model perspective is useful because it makes explicit a question that PCA tends to obscure: are the leading components capturing biology, or are they capturing nuisance variation (batch, technical artifact, latent population structure)? The same eigenvector decomposition can produce either, and only domain knowledge — which the math itself does not supply — distinguishes them.
+**For nonlinear embeddings — would the pattern appear under noise?**
+
+The single most informative diagnostic is the **UMAP-on-noise comparison**: run UMAP (or t-SNE) on the real data, then run the *same algorithm with the same parameters* on a matrix in which each gene's expression vector has been independently permuted across samples. If the embedding of the noise matrix shows visually similar clusters to the embedding of the real data, the clusters in the real embedding are an artifact of the algorithm — not evidence of biological structure. The UMAP-on-noise figure earlier in this lecture is the visual form; **Lab 3, Part 5** walks through it on Golub.
+
+**For nonlinear embeddings — is the result reproducible?**
+
+UMAP and t-SNE are stochastic. Run the embedding with at least three different random seeds and compare the resulting plots side-by-side. If the qualitative structure (group separation, broad arrangement) is preserved across runs, the picture is reproducible up to a seed. If groups merge, split, or re-arrange, the embedding is fragile and conclusions based on its appearance are not defensible. **Lab 3, Part 6** runs this seed-stability check.
+
+**For nonlinear embeddings — is the result robust to parameter choices?**
+
+Vary the key parameter — perplexity for t-SNE, `n_neighbors` for UMAP — across a sensible range (e.g., 5, 30, 60 for perplexity on $n = 72$). If the separation of the groups you care about persists across settings, the structure is robust. If it appears only at a single parameter value and disappears at others, the apparent separation is parameter-dependent — and the right report is "this looks like a signal at moderate perplexity, but it does not survive parameter variation." **Lab 3, Part 6** sweeps perplexity for t-SNE and `n_neighbors` for UMAP.
+
+### A six-line diagnostic checklist
+
+When reporting any dimension-reduction result:
+
+1. State the preprocessing: were features standardized? Were the genes filtered (e.g., highly-variable selection)?
+2. State the method: PCA / t-SNE / UMAP / other, with explicit parameter values.
+3. Report a *reality check* for the leading components: parallel analysis or the Marchenko–Pastur threshold for PCA; UMAP-on-permuted comparison for nonlinear methods.
+4. Report a *reproducibility check* for stochastic methods: three different random seeds.
+5. Report a *robustness check*: vary the principal parameter (perplexity / n_neighbors) and show the embedding persists.
+6. Mark the resulting picture as **exploratory**: cluster identification, hypothesis generation, visualization — not quantitatively faithful geometry.
+
+Quantitative claims about cluster counts, inter-cluster distances, cluster sizes, or trajectory directions require validation by other methods — clustering on the PCs with a defensible algorithm, comparison to known marker genes, or testing on a held-out cohort.
 
 ---
 
 ## Summary and outlook
 
-Six points constitute the lecture's content. First, PCA is the default first step in dimension reduction: fast, interpretable, and optimal for linear structure under the [Eckart–Young theorem](https://doi.org/10.1007/BF02288367). Second, scree plots and the Marchenko–Pastur threshold support principled selection of the number of components. Third, t-SNE and UMAP reveal nonlinear structure but distort distances, cluster sizes, and counts of apparent clusters; their plots are sketches, not photographs. Fourth, the recommended workflow is PCA first, then a nonlinear method on the top principal components. Fifth, nonlinear embeddings should be treated as instruments for exploration rather than confirmation. Sixth, in the $p \gg n$ regime, random matrix theory imposes fundamental limits on what PCA can detect; weak signals are not merely hard to find — they are absorbed into the noise spectrum.
+Four claims structure this lecture.
 
-Lab 3 applies PCA and UMAP to the Golub dataset and asks the standard exploratory questions: what are the leading components, where do the samples cluster, and which genes drive the separation? Lecture 4 turns from unsupervised structure discovery to the supervised problem of building a predictive model when $p \gg n$ — the regime in which classical regression fails most spectacularly.
+1. **PCA is the optimal linear method** and the right first step. The Eckart–Young theorem makes the optimality precise; the loadings make the result interpretable; the SVD makes the computation fast.
+2. **In $p \gg n$, random-matrix theory imposes fundamental detection limits.** The Marchenko–Pastur bulk and the BBP threshold are properties of the geometry of the problem, not of the procedure. Parallel analysis is the empirical diagnostic of choice.
+3. **t-SNE and UMAP expose nonlinear structure but distort distances, cluster sizes, and cluster counts.** Their plots are sketches for exploration, not photographs for confirmation.
+4. **The defensible workflow is standardize → PCA to $k$ → nonlinear method on the top $k$ PCs**, accompanied by the diagnostic protocol above. Every step has a check; every check has a corresponding Lab 3 exercise.
+
+Lab 3 applies the full pipeline to the Golub dataset: PCA + scree + parallel analysis, UMAP and t-SNE on the top 30 PCs, the UMAP-on-noise diagnostic, seed-stability, and parameter sweeps. Lecture 4 turns from unsupervised structure discovery to the supervised problem of building a predictive model when $p \gg n$ — the regime in which classical regression fails most spectacularly.
