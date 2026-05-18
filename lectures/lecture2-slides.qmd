@@ -86,34 +86,199 @@ $$\hat\theta_i^{\mathrm{JS}} = \bar y + \left(1 - \frac{(d-3)\sigma^2}{\sum_j (y
 The shrinkage factor is *data-dependent*: when the $y_i$ are tightly clustered, more shrinkage; when they are spread out, less. The dependence on the other coordinates is what produces the risk improvement — and is structurally identical to what empirical Bayes will exploit.
 
 ::: {.notes}
-The Stein result was deeply counterintuitive in 1956. Each $y_i$ is the maximum-likelihood estimate of $\theta_i$, depends only on data relevant to $\theta_i$, and is unbiased. None of that survives the move to vector loss: when you care about *all* of the $\theta_i$ at once, you can do strictly better by allowing the estimate for one coordinate to depend on the others. Frame this slide as the historical anchor for what comes next; the next slide makes the connection to genes explicit.
+The Stein result was deeply counterintuitive in 1956. Each $y_i$ is the maximum-likelihood estimate of $\theta_i$, depends only on data relevant to $\theta_i$, and is unbiased. None of that survives the move to vector loss: when you care about *all* of the $\theta_i$ at once, you can do strictly better by allowing the estimate for one coordinate to depend on the others.
 :::
 
 ---
 
-## From baseball averages to gene expression
+## Shrinkage visualized: every MLE pulled toward $\bar y$
 
-The most accessible demonstration of the Stein effect is the [Efron–Morris (1977)](https://www.jstor.org/stable/24953895) baseball analysis. End-of-season batting averages for 18 major-league players are predicted more accurately by *shrinking each player's early-season average toward the grand mean across players* than by using each player's own data alone — even though the players are independent in any biological or causal sense.
+```{python}
+#| label: fig-js-shrinkage-slide
+#| echo: false
+#| fig-height: 4
+import numpy as np
+import matplotlib.pyplot as plt
 
-The empirical-Bayes generalization, due to Efron and adopted in genomics from the 1990s onward:
+sim_rng = np.random.default_rng(42)
+d, sigma = 20, 1.0
+theta = sim_rng.normal(0, 1, size=d)
+y = theta + sim_rng.normal(0, sigma, size=d)
+ybar = y.mean()
+ss = np.sum((y - ybar) ** 2)
+c = max(0.0, 1 - (d - 3) * sigma ** 2 / ss)
+theta_js = ybar + c * (y - ybar)
 
-- When $m$ tests are conducted under exchangeable conditions, the *aggregate* of observations carries information about any individual one.
-- In a 10,000-gene study, the other 9,999 results constrain the plausible prior probability that any particular gene is non-null.
-- The histogram of $z$-scores or $p$-values is precisely that aggregate — and the prior $\pi_0$ is read from its flat region.
+fig, ax = plt.subplots(figsize=(10, 4))
+y_pos_mle, y_pos_js = 1.0, 0.0
+ax.axvline(ybar, color="#1f77b4", linestyle="--", lw=1.2, alpha=0.7, zorder=1)
+ax.text(ybar, 1.55, fr"$\bar y = {ybar:+.2f}$", color="#1f77b4",
+        ha="center", va="bottom", fontsize=11)
+ax.axhline(y_pos_mle, color="#999", alpha=0.25, lw=0.6, zorder=0)
+ax.axhline(y_pos_js, color="#999", alpha=0.25, lw=0.6, zorder=0)
+ax.scatter(y, np.full(d, y_pos_mle), s=70, color="#444",
+           label=r"MLE $\hat\theta_i = y_i$", zorder=4)
+ax.scatter(theta_js, np.full(d, y_pos_js), s=70, color="#c0504d",
+           label=r"James–Stein $\hat\theta_i^{\,\mathrm{JS}}$", zorder=4)
+for j in range(d):
+    ax.annotate("", xy=(theta_js[j], y_pos_js + 0.06),
+                xytext=(y[j], y_pos_mle - 0.06),
+                arrowprops=dict(arrowstyle="-|>", color="#888", lw=0.6, alpha=0.8),
+                zorder=2)
+xmin = min(y.min(), theta_js.min()) - 0.5
+ax.text(xmin, y_pos_mle, "MLE  →", ha="right", va="center", color="#444", fontsize=11)
+ax.text(xmin, y_pos_js, "JS  →", ha="right", va="center", color="#c0504d", fontsize=11)
+ax.set_xlabel("Estimate value")
+ax.set_yticks([]); ax.set_ylim(-0.5, 1.7)
+ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+ax.spines["left"].set_visible(False)
+ax.set_title(rf"$d={d}$ noisy means; shrinkage factor $c = {c:.2f}$")
+mle_sd, js_sd = float(np.std(y)), float(np.std(theta_js))
+ax.text(0.99, 0.05, f"SD(MLE) = {mle_sd:.2f}\nSD(JS) = {js_sd:.2f}",
+        transform=ax.transAxes, ha="right", va="bottom", fontsize=10, color="#444",
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#bbb", lw=0.7))
+ax.legend(loc="upper left", frameon=False, fontsize=10)
+plt.tight_layout()
+plt.show()
+```
 
-The classical analyst tests one gene at a time. The empirical-Bayes analyst tests gene 4,237 *while using the other 9,999 results to estimate the prior*. The data themselves reveal the prior; the analyst is not required to specify one.
+The MLE row spreads widely around $\bar y$; the JS row is tight. Every arrow points *toward* $\bar y$. The classical estimator gets every $\hat\theta_i$ "right on average"; the JS estimator gets the *vector* right on average.
+
+---
+
+## Efron–Morris baseball: the canonical worked example
+
+```{python}
+#| label: fig-baseball-slide
+#| echo: false
+#| fig-height: 4.2
+sim_rng2 = np.random.default_rng(1970)
+n_players, at_bats = 18, 45
+theta_b = np.clip(sim_rng2.normal(0.265, 0.030, size=n_players), 0.15, 0.40)
+y_b = sim_rng2.binomial(at_bats, theta_b) / at_bats
+ybar_b = y_b.mean()
+ss_b = np.sum((y_b - ybar_b) ** 2)
+sigma2_b = ybar_b * (1 - ybar_b) / at_bats
+c_b = max(0.0, 1 - (n_players - 3) * sigma2_b / ss_b)
+y_js_b = ybar_b + c_b * (y_b - ybar_b)
+y_gm_b = np.full(n_players, ybar_b)
+
+mse = lambda est: np.mean((est - theta_b) ** 2)
+mse_mle, mse_js, mse_gm = mse(y_b), mse(y_js_b), mse(y_gm_b)
+wins_js = int(np.sum((y_js_b - theta_b) ** 2 < (y_b - theta_b) ** 2))
+
+fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+order_b = np.argsort(theta_b)
+axes[0].plot(np.arange(n_players), theta_b[order_b], "k_",
+             markersize=18, mew=2.5, label="True $\\theta$ (end of season)")
+axes[0].scatter(np.arange(n_players), y_b[order_b], s=45, color="#888",
+                marker="o", label="MLE (first 45 at-bats)")
+axes[0].scatter(np.arange(n_players), y_js_b[order_b], s=45, color="#c0504d",
+                marker="D", label="James–Stein")
+axes[0].axhline(ybar_b, color="#1f6f8b", linestyle=":", lw=1.2,
+                label=f"Grand mean ($\\bar y={ybar_b:.3f}$)")
+axes[0].set_xlabel("Player (ordered by true average)")
+axes[0].set_ylabel("Batting average")
+axes[0].set_title("Three estimators on 18 simulated batters")
+axes[0].legend(loc="upper left", fontsize=9, frameon=False)
+
+labels = ["MLE", "James–Stein", "Grand mean"]
+vals = [mse_mle, mse_js, mse_gm]
+colors = ["#888", "#c0504d", "#1f6f8b"]
+bars = axes[1].bar(labels, vals, color=colors, width=0.55)
+for b, v in zip(bars, vals):
+    axes[1].text(b.get_x() + b.get_width()/2, v + max(vals)*0.02,
+                 f"{v*1e4:.1f}×10⁻⁴", ha="center", va="bottom", fontsize=10)
+axes[1].set_ylabel("Mean squared error vs. truth")
+axes[1].set_title(f"JS wins on aggregate; beats MLE on {wins_js}/{n_players} players")
+axes[1].set_ylim(0, max(vals) * 1.18)
+plt.tight_layout()
+plt.show()
+```
+
+The 18 players are independent in every biological sense, yet their data jointly improve every individual estimate. The "no pooling" MLE (gray) and "full pooling" grand mean (blue) bracket the extremes; JS (red) is the data-driven compromise that wins on aggregate.
+
+::: {.notes}
+Replace "players" with "genes," "early-season averages" with "two-sample mean differences," and the same mathematics applies. The empirical-Bayes machinery developed in the rest of the lecture is the high-dimensional generalization of this calculation.
+:::
+
+---
+
+## Empirical Bayes: the data determines the prior
+
+The classical objection to Bayesian methods is that the prior must be specified by the analyst. In the high-dimensional setting the objection loses its force: the histogram of $y_i$ is itself an estimate of the marginal
+
+$$f(y) = \int g(y \mid \theta)\,\pi(\theta)\,d\theta,$$
+
+so the prior $\pi(\theta)$ is recoverable by deconvolution from data the analyst already has.
 
 > "Letting the data determine the prior turns Bayesian inference from a subjective into a largely objective technique."
 >
 > — Efron, [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), Ch. 1.
 
+Storey's $\hat\pi_0$ from Lecture 1 is the simplest empirical-Bayes estimator: it estimates the prior probability that an individual gene is null directly from the population of $p$-values. The rest of this lecture builds the same idea out into a full model.
+
+---
+
+## Why is the MLE still used? It depends on the loss.
+
+Stein's paradox is *not* a refutation of the MLE. JS dominates MLE under **one specific loss**: total squared error summed over coordinates.
+
+| Loss function | Optimal estimator |
+|---|---|
+| Joint: $L = \sum_i (\hat\theta_i - \theta_i)^2$ | **James–Stein** (shrunken) |
+| Coordinatewise: $L_i = (\hat\theta_i - \theta_i)^2$ for each $i$ | **MLE** (unbiased) |
+| Predictive: $L_* = (\hat y_* - y_*)^2$ for $\hat y_* = \mathbf{x}_*^\top\hat{\boldsymbol\beta}$ | **Regularized** (ridge, LASSO, …) |
+
+- **One gene reported, validated independently:** MLE is the right tool.
+- **A gene list scored against a downstream aggregate:** JS-style shrinkage is the right tool.
+- **A clinical predictor evaluated on test data:** regularized estimators win — even though their coefficients are biased.
+
+The empirical-Bayes machinery in this lecture is not a *replacement* for the MLE. It is the tool you reach for when (a) you have many parallel inferences, (b) the loss is aggregate, and (c) the prior is empirically estimable.
+
 ::: {.notes}
-Connect the baseball example explicitly to the gene-expression setting before moving on. The Efron quote belongs here as the philosophical statement of empirical Bayes; the next several slides operationalize it via Efron's two-groups model and the local FDR. Storey's π̂₀ — covered in Lecture 1 — is the simplest empirical-Bayes estimator in the same framework; we'll cite it as a special case rather than re-deriving it.
+Land the decision-theoretic frame: choose a loss → choose a framework → derive the rule. This is the bridge between Lecture 1's testing procedures and Lecture 2's estimators — both are decision rules under explicit loss.
 :::
 
 ---
 
-## Efron's two-groups model
+## JS-vs-MLE risk curves
+
+```{python}
+#| label: fig-risk-curve-slide
+#| echo: false
+#| fig-height: 4
+sim_rng5 = np.random.default_rng(3)
+d_risk, sigma2 = 30, 1.0
+sizes = np.logspace(-1, 2, 12)
+n_reps = 400
+mle_risks, js_risks = [], []
+for s2 in sizes:
+    rep_mle, rep_js = [], []
+    for _ in range(n_reps):
+        th = sim_rng5.normal(0, np.sqrt(s2), size=d_risk)
+        yr = th + sim_rng5.normal(0, np.sqrt(sigma2), size=d_risk)
+        rep_mle.append(np.mean((yr - th) ** 2))
+        ss_y = np.sum(yr ** 2)
+        c_r = max(0.0, 1 - (d_risk - 2) * sigma2 / ss_y)
+        th_js = c_r * yr
+        rep_js.append(np.mean((th_js - th) ** 2))
+    mle_risks.append(np.mean(rep_mle))
+    js_risks.append(np.mean(rep_js))
+
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.plot(sizes, mle_risks, "o-", color="#444", lw=2, label="MLE")
+ax.plot(sizes, js_risks, "s-", color="#c0504d", lw=2, label="James–Stein (shrunken toward 0)")
+ax.set_xscale("log"); ax.set_yscale("log")
+ax.set_xlabel(r"$\|\theta\|^2/d$ (size of true means; log scale)")
+ax.set_ylabel("Per-coordinate MSE (log scale)")
+ax.set_title(f"Under joint squared loss, JS strictly dominates the MLE at every $\\|\\theta\\|^2$ ($d={d_risk}$)")
+ax.legend(loc="lower right", fontsize=10, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+Under joint loss, **JS beats MLE everywhere**. The improvement is largest when $\|\boldsymbol\theta\|$ is small (the prior at zero is approximately correct) and narrows but never disappears as $\|\boldsymbol\theta\|$ grows. The MLE risk is flat at the sampling variance $\sigma^2$; JS borrows information from the population to do better.
 
 Developed in [Efron (2004)](https://doi.org/10.1198/016214504000000089), [Efron (2008)](https://doi.org/10.1214/07-STS236), and [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), Ch. 2–4. The framework formalizes the empirical-Bayes program as a finite mixture.
 
@@ -188,6 +353,49 @@ The tail-area FDR is the average of the local FDR over the rejection region. Two
 
 ---
 
+## The local FDR curve, visualized
+
+```{python}
+#| label: fig-fdr-curve-slide
+#| echo: false
+#| fig-height: 4
+sim_rng3 = np.random.default_rng(7)
+m_sim, pi0_sim = 5000, 0.85
+m1 = int(round(m_sim * (1 - pi0_sim)))
+xs = np.linspace(-4.5, 6.5, 600)
+f0_xs = norm.pdf(xs, 0, 1)
+f1_xs = norm.pdf(xs, 2.6, 1.1)
+fmix_xs = pi0_sim * f0_xs + (1 - pi0_sim) * f1_xs
+fdr_xs = np.clip(pi0_sim * f0_xs / fmix_xs, 0, 1)
+
+fig, axes = plt.subplots(2, 1, figsize=(10, 4.6), sharex=True,
+                          gridspec_kw=dict(height_ratios=[1, 1]))
+z_null = sim_rng3.normal(0, 1, size=m_sim - m1)
+z_alt = sim_rng3.normal(2.6, 1.1, size=m1)
+axes[0].hist(np.concatenate([z_null, z_alt]), bins=80, density=True,
+             color="#cfe2f3", edgecolor="white", alpha=0.85)
+axes[0].fill_between(xs, pi0_sim * f0_xs, color="#3b78cc", alpha=0.55,
+                     label=r"$\pi_0 f_0(z)$")
+axes[0].fill_between(xs, (1 - pi0_sim) * f1_xs, color="#e8923c", alpha=0.75,
+                     label=r"$(1-\pi_0) f_1(z)$")
+axes[0].plot(xs, fmix_xs, color="black", lw=1.5, label=r"$f(z)$")
+axes[0].set_ylabel("density"); axes[0].legend(loc="upper right", fontsize=9, frameon=False)
+axes[0].set_title(rf"Mixture at $\pi_0={pi0_sim:.2f}$, and the resulting local FDR")
+
+axes[1].plot(xs, fdr_xs, color="#2a4d9c", lw=2)
+axes[1].axhline(0.20, color="#c0504d", linestyle="--", lw=1.2,
+                label=r"$\mathrm{fdr}(z) = 0.20$")
+axes[1].set_xlabel(r"$z$"); axes[1].set_ylabel(r"$\mathrm{fdr}(z)$")
+axes[1].set_ylim(0, 1.05)
+axes[1].legend(loc="center right", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+Near $z = 0$, almost all of the density is null and $\mathrm{fdr}(z) \approx 1$. As $|z|$ grows, the alternative component dominates and $\mathrm{fdr}(z) \to 0$. The threshold $\mathrm{fdr} < 0.20$ identifies which $z$-scores to call non-null.
+
+---
+
 ## The two-groups model is empirical Bayes in standard form
 
 | Component | Symbol | Meaning |
@@ -198,6 +406,184 @@ The tail-area FDR is the average of the local FDR over the rejection region. Two
 | Posterior | $\mathrm{fdr}(z)$ | $P(\mathrm{null}\mid Z=z) = \pi_0 f_0(z) / f(z)$ |
 
 What makes this *empirical* Bayes rather than fully Bayesian is that $\pi_0$ and $f_1$ are not specified by the analyst — they are estimated from the population of $m$ tests. With $m$ in the thousands, the data themselves determine the prior, and Bayes's theorem is then applied case by case.
+
+---
+
+# The Two-Groups Model on Golub {.centered}
+
+---
+
+## Step 1 — the $z$-score histogram
+
+```{python}
+#| label: fig-golub-zhist-slide
+#| echo: false
+#| fig-height: 3.8
+import pandas as pd
+from scipy import stats
+expr = pd.read_csv("../data/golub_expression.csv", index_col=0)
+meta = pd.read_csv("../data/golub_metadata.csv")
+all_mask = meta["subtype"].values == "ALL"
+aml_mask = meta["subtype"].values == "AML"
+t_stats, golub_pvals = stats.ttest_ind(
+    expr.loc[:, all_mask].values, expr.loc[:, aml_mask].values, axis=1, equal_var=False
+)
+golub_z = norm.ppf(1 - golub_pvals / 2) * np.sign(t_stats)
+golub_z = golub_z[np.isfinite(golub_z)]
+n_genes = len(golub_pvals)
+
+fig, ax = plt.subplots(figsize=(10, 3.8))
+ax.hist(golub_z, bins=80, density=True, color="#cfe2f3", edgecolor="white",
+        alpha=0.85, label=r"3,051 Golub $z$-scores")
+zg = np.linspace(golub_z.min() - 0.5, golub_z.max() + 0.5, 500)
+ax.plot(zg, norm.pdf(zg, 0, 1), color="#c0504d", lw=2, linestyle="--",
+        label=r"Theoretical null $N(0,1)$")
+ax.set_xlabel(r"$z$"); ax.set_ylabel("density")
+ax.set_title("Golub ALL vs AML: central peak resembles $N(0,1)$, tails are heavier")
+ax.legend(loc="upper right", fontsize=10, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+The histogram is the empirical-Bayes analyst's basic object. Spike near zero = real signal; flat region away from zero = null density.
+
+---
+
+## Step 2 — fit the mixture and recover $f_1$
+
+```{python}
+#| label: fig-golub-twogroups-slide
+#| echo: false
+#| fig-height: 4
+lam = 0.5
+pi0_golub = float(np.sum(golub_pvals > lam) / (n_genes * (1 - lam)))
+pi0_golub = min(pi0_golub, 1.0)
+kde = stats.gaussian_kde(golub_z, bw_method=0.20)
+zg = np.linspace(-6, 6, 400)
+f_hat = kde(zg)
+f0_g = norm.pdf(zg, 0, 1)
+f1_contrib = np.clip(f_hat - pi0_golub * f0_g, 0, None)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.hist(golub_z, bins=80, density=True, color="#cfe2f3", edgecolor="white",
+        alpha=0.75, label="Observed $z$-scores")
+ax.fill_between(zg, pi0_golub * f0_g, color="#3b78cc", alpha=0.55,
+                label=rf"$\hat\pi_0\,\phi(z),\ \hat\pi_0={pi0_golub:.2f}$")
+ax.fill_between(zg, f1_contrib, color="#e8923c", alpha=0.7,
+                label=r"$(1-\hat\pi_0)\hat f_1(z)$ (recovered)")
+ax.plot(zg, f_hat, color="black", lw=1.5, label=r"$\hat f(z)$ (KDE)")
+ax.set_xlabel(r"$z$"); ax.set_ylabel("density")
+ax.set_title("Two-groups fit on Golub: blue = nulls, orange = alternatives")
+ax.legend(loc="upper right", fontsize=10, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+Storey's estimator gives $\hat\pi_0 \approx 0.6$: roughly 60% of genes are null, 40% carry signal. ALL and AML differ substantially.
+
+---
+
+## Step 3 — the local FDR curve
+
+```{python}
+#| label: fig-golub-localfdr-slide
+#| echo: false
+#| fig-height: 3.8
+fdr_grid = np.clip(pi0_golub * f0_g / np.maximum(f_hat, 1e-12), 0, 1)
+fig, ax = plt.subplots(figsize=(10, 3.8))
+ax.plot(zg, fdr_grid, color="#2a4d9c", lw=2)
+ax.axhline(0.20, color="#c0504d", linestyle="--", lw=1.2,
+           label=r"$\widehat{\mathrm{fdr}}(z) = 0.20$ threshold")
+above = fdr_grid > 0.20
+crossings = np.where(np.diff(above.astype(int)) != 0)[0]
+for k in crossings:
+    z_cross = zg[k]
+    ax.axvline(z_cross, color="#888", linestyle=":", lw=0.9)
+    ax.text(z_cross, 0.93, f"$z={z_cross:+.2f}$",
+            rotation=90, va="top", ha="right", fontsize=9, color="#444")
+ax.set_xlabel(r"$z$"); ax.set_ylabel(r"$\widehat{\mathrm{fdr}}(z)$")
+ax.set_title("Local FDR on Golub: $\\widehat{\\mathrm{fdr}}(z)$ crosses 0.20 around $|z| \\approx 2$")
+ax.set_ylim(0, 1.05); ax.set_xlim(-6, 6)
+ax.legend(loc="lower center", fontsize=10, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+Each gene receives a *per-test* posterior probability of being null. The $\mathrm{fdr} < 0.20$ list is the natural empirical-Bayes analogue of the BH rejection set.
+
+---
+
+## Step 4 — three rules, three discovery counts
+
+```{python}
+#| label: fig-golub-comparison-slide
+#| echo: false
+#| fig-height: 3.5
+from statsmodels.stats.multitest import multipletests
+fdr_per_gene = np.clip(pi0_golub * norm.pdf(golub_z, 0, 1) / np.maximum(kde(golub_z), 1e-12), 0, 1)
+bonf_thresh = 0.05 / n_genes
+n_bonf = int(np.sum(golub_pvals < bonf_thresh))
+_, p_bh, _, _ = multipletests(golub_pvals, alpha=0.05, method="fdr_bh")
+n_bh = int(np.sum(p_bh <= 0.05))
+n_lfdr = int(np.sum(fdr_per_gene < 0.20))
+
+labels = ["Bonferroni\nα=0.05", "BH\nFDR=0.05", "Local FDR\nfdr<0.20"]
+counts = [n_bonf, n_bh, n_lfdr]
+colors = ["#888", "#3b78cc", "#c0504d"]
+fig, ax = plt.subplots(figsize=(10, 3.5))
+bars = ax.bar(labels, counts, color=colors, width=0.55)
+for b, c in zip(bars, counts):
+    ax.text(b.get_x() + b.get_width()/2, c + max(counts)*0.02, f"{c}",
+            ha="center", va="bottom", fontsize=14)
+ax.set_ylabel("Genes called significant")
+ax.set_title("Three discovery rules on the Golub data")
+ax.set_ylim(0, max(counts) * 1.18)
+plt.tight_layout()
+plt.show()
+```
+
+Bonferroni protects against any false positive — strict; BH protects an expected fraction — discovery-oriented; local FDR gives each gene a posterior probability — most informative at the individual level. The three lists overlap heavily, with informative differences at the boundary.
+
+---
+
+# Empirical Bayes in Practice: limma {.centered}
+
+---
+
+## limma: variance shrinkage on Golub
+
+```{python}
+#| label: fig-limma-slide
+#| echo: false
+#| fig-height: 4
+all_data = expr.loc[:, all_mask].values
+aml_data = expr.loc[:, aml_mask].values
+n_a, n_b = all_data.shape[1], aml_data.shape[1]
+ss_within = ((all_data - all_data.mean(axis=1, keepdims=True))**2).sum(axis=1) \
+          + ((aml_data - aml_data.mean(axis=1, keepdims=True))**2).sum(axis=1)
+d_g = n_a + n_b - 2
+s_g = np.sqrt(ss_within / d_g)
+log_s2 = np.log(s_g**2)
+d0 = 4.0
+s0_sq = float(np.exp(log_s2.mean()))
+s_tilde = np.sqrt((d0 * s0_sq + d_g * s_g**2) / (d0 + d_g))
+
+fig, ax = plt.subplots(figsize=(10, 4))
+mx = float(np.percentile(np.concatenate([s_g, s_tilde]), 99))
+ax.plot([0, mx], [0, mx], color="#888", lw=1, linestyle="--", label="No shrinkage")
+ax.axhline(np.sqrt(s0_sq), color="#c0504d", lw=1.2, linestyle=":",
+           label=rf"Prior $\sqrt{{s_0^2}} \approx {np.sqrt(s0_sq):.2f}$")
+ax.scatter(s_g, s_tilde, s=4, alpha=0.5, color="#2a4d9c", rasterized=True)
+ax.set_xlabel(r"Raw gene-level SD $s_g$")
+ax.set_ylabel(r"Moderated SD $\tilde s_g$")
+ax.set_title(rf"limma-style variance shrinkage on 3,051 Golub genes ($d_0={d0:.0f}$)")
+ax.set_xlim(0, mx); ax.set_ylim(0, mx)
+ax.legend(loc="upper left", fontsize=10, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+Each gene's variance estimate is shrunk toward a population prior $s_0^2$. The **moderated $t$-statistic** divides by $\tilde s_g$ instead of $s_g$, preventing spurious significance from a coincidentally small denominator. Same EB principle as the two-groups model, applied to a continuous parameter ($\sigma_g^2$) instead of a binary one (null/alt).
 
 ---
 
