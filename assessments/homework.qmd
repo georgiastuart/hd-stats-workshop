@@ -12,10 +12,8 @@ format:
 ::: {.callout-tip icon=true}
 ## Do this assignment in Colab
 
-The interactive version with answer cells lives in a Colab notebook (R kernel — Q2 uses limma + qvalue):
+The interactive version with answer cells lives in a Colab notebook (Python `hd-stats` kernel — Q2 implements moderated $t$-statistics and Storey's $\hat\pi_0$ from scratch in numpy + scipy + statsmodels; no R, no Bioconductor):
 [**Open Homework in Colab**](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/homework.ipynb)
-
-In Colab: **Runtime → Change runtime type → R** before running cells.
 
 This page is the readable web reference.
 :::
@@ -25,7 +23,7 @@ This page is the readable web reference.
 This homework consolidates Day 1 material and bridges to Day 2. It maps onto the Day-1 structure:
 
 - **Q1 — Multiple Testing Concepts (LO1, LO3)**. Exercises **Lecture 1** (hypothesis testing: Bonferroni / FWER, BH / FDR, $q$-values) and includes an **AI explanation + critique** exercise.
-- **Q2 — FDR in Practice (LO1, LO3)**. Connects both Day-1 lectures: BH-adjusted $p$-values from **Lecture 1**; `limma`'s empirical-Bayes variance shrinkage and $\hat\pi_0$ estimation from **Lecture 2**. **All three sub-parts ask you to use AI for code generation** and to critique what comes back.
+- **Q2 — FDR in Practice (LO1, LO3)**. Connects both Day-1 lectures: BH-adjusted $p$-values from **Lecture 1**; empirical-Bayes variance shrinkage (the moderated $t$-statistic, the idea behind `limma`'s `eBayes`) and $\hat\pi_0$ estimation from **Lecture 2**. **You will implement the moderated-$t$ statistic from scratch in Python** in roughly 15 lines of numpy + scipy — no R, no Bioconductor. **All three sub-parts ask you to use AI for code generation** and to critique what comes back.
 - **Q3 — Evaluating Analysis Output (LO3)**. Exercises the critical-evaluation thread from both lectures, with explicit **you-vs-AI comparison** exercises in writing specifications, debugging, and code review.
 
 **AI integration is required.** Every question has at least one sub-part where you direct an AI assistant, paste its output, and evaluate it against named criteria. Use any of: the [UMass campus GenAI platform](https://www.umass.edu/it/genai/platform), Claude, ChatGPT, or another assistant of your choice. Note which AI you used for each prompt — different models behave differently, and the differences are themselves part of the lesson.
@@ -58,29 +56,33 @@ Paste the AI's response. Then critique it against five criteria: (i) Does it def
 
 ## Q2: FDR in Practice (LO1, LO3)
 
-*Connects both Day-1 lectures: `limma`'s `eBayes` is the empirical-Bayes variance shrinkage from Lecture 2; BH adjustment and Storey's $\hat\pi_0$ are from Lecture 1. All three sub-parts use AI to generate the R code; the critique sections check it.*
+*Connects both Day-1 lectures: Lecture 2's empirical-Bayes variance shrinkage produces moderated $t$-statistics; Lecture 1's BH adjustment converts the moderated $p$-values to FDR-controlled discoveries; Storey's $\hat\pi_0$ from the same lecture provides an adaptive estimator of the null proportion. **You will implement `limma`'s `eBayes` idea from scratch in Python — no R, no rpy2 — in roughly 15 lines of numpy + scipy.** All three sub-parts use AI to generate the Python code; the critique sections check it.*
 
-Using the Golub dataset (introduced in Lecture 1 and used in Labs 1 and 2), perform the following analysis. You should use AI to write the R code, but evaluate its correctness and interpret the results yourself.
+Using the Golub dataset (introduced in Lecture 1 and used in Labs 1 and 2), perform the following analysis. You should use AI to write the Python code, but evaluate its correctness and interpret the results yourself.
 
-**(a) BH-adjusted p-values via `limma`.** Direct an AI to compute BH-adjusted $p$-values for the ALL vs. AML comparison **using `limma`** (not raw $t$-tests). Report the number of genes significant at FDR $< 0.01$, $< 0.05$, $< 0.10$.
+**(a) BH-adjusted p-values via hand-rolled moderated $t$-statistics.** Implement Smyth's moderated $t$-statistic from scratch in Python (not by calling an R library), then BH-adjust. The moderated $t$-statistic is
 
-Suggested prompt (paste-ready, with R-specific format directive):
+$$\tilde t_g = \frac{\bar y_{g,A} - \bar y_{g,B}}{\tilde s_g\, \sqrt{1/n_A + 1/n_B}},\quad \tilde s_g^2 = \frac{d_0 s_0^2 + d_g s_g^2}{d_0 + d_g}$$
 
-> "Reply with a single R code block (no prose, no .docx file — just runnable code I can paste into an R-kernel Colab cell). Using `limma` with empirical-Bayes variance shrinkage, fit the ALL vs. AML contrast on the Golub expression matrix `expr` (3,051 genes × 72 samples) using subtype labels from `meta`, extract BH-adjusted p-values from `topTable(..., adjust.method = 'BH', number = Inf)`, and print the number of genes with `adj.P.Val` below 0.01, 0.05, and 0.10."
+with $d_g = n_A + n_B - 2$ and prior hyperparameters $(d_0 = 4,\, s_0^2 = \exp(\overline{\log s_g^2}))$ as a simple heuristic. Reference distribution: $t_{d_0 + d_g}$.
 
-Include the prompt you used and note whether the AI spontaneously chose `limma` or whether you had to direct it.
+Suggested prompt (paste-ready, with Python-specific format directive):
 
-**(b) Estimate $\hat\pi_0$ with `qvalue`.** Use the `qvalue` package to estimate $\hat{\pi}_0$. What does this estimate tell you about the dataset?
+> "Reply with a single Python code block (no prose, no .docx file). Given pandas DataFrames `expr` (3,051 genes × 72 samples) and `meta` (sample_id, subtype = 'ALL' or 'AML'), implement Smyth's moderated $t$-statistic from scratch: compute per-gene pooled sample variance with $d_g = n_A + n_B - 2$ degrees of freedom, fit an inverse-chi-squared prior with $d_0 = 4$ and $s_0^2 = \exp(\text{mean log }s_g^2)$, compute moderated variances and moderated $t$-statistics, get two-sided p-values from a $t$-distribution with $d_0 + d_g$ dof, then BH-adjust with `statsmodels.stats.multitest.multipletests(method='fdr_bh')`. Print counts at FDR thresholds 0.01, 0.05, 0.10. Use numpy, scipy.stats, and statsmodels only."
 
-Suggested prompt:
+Include the prompt you used and note whether the AI produced the moderated-$t$ implementation in one shot, or whether you had to direct it.
 
-> "Reply with a single R code block (no prose, no .docx file). Given the vector of raw p-values `pvals` from limma's topTable on the Golub data, use `qvalue::qvalue(pvals)` to estimate pi_0. Print pi_0_hat with three decimal places and a one-line interpretation of what that value implies about the proportion of genes that are non-null. Do not invent or hallucinate numbers — only print what qvalue returns."
-
-**(c) Annotated p-value histogram.** Make a $p$-value histogram. Annotate it: mark the region where you think the true alternatives are concentrated, and the region dominated by true nulls.
+**(b) Estimate $\hat\pi_0$ using Storey's formula.** $\hat\pi_0(\lambda) = \#\{p_i > \lambda\}/(m(1-\lambda))$, $\lambda = 0.5$. Same recipe as Lab 2 cell 7, applied to the moderated $p$-values from (a).
 
 Suggested prompt:
 
-> "Reply with a single R code block (no prose, no .docx file). Given the vector of raw p-values `pvals` from limma's topTable on the Golub data and the qvalue-estimated `pi_0`, produce a `ggplot2` histogram of the p-values with 50 bins (density scaled), overlay a horizontal dashed reference line at the uniform-null density (height 1), overlay a horizontal dotted line at the estimated null-density height pi_0, and annotate two regions: a vertical band 0-0.1 labelled 'spike of true alternatives', and a vertical band 0.5-1.0 labelled 'roughly uniform null region.' Use clear axis labels and a title."
+> "Reply with a single Python code block (no prose, no .docx file). Given a numpy array `p_mod` of raw $p$-values from the moderated-$t$ analysis, compute Storey's $\hat\pi_0(\lambda)$ at $\lambda = 0.5$, print it to three decimal places with a one-line interpretation. Do not invent or hallucinate numbers — only print what the formula returns."
+
+**(c) Annotated p-value histogram.** Make a matplotlib histogram of the moderated $p$-values from (a). Add a horizontal dashed reference line at the uniform-null density (height 1), a horizontal dotted line at $\hat\pi_0$, and two shaded regions: 0–0.1 (alternatives) and 0.5–1.0 (uniform null).
+
+Suggested prompt:
+
+> "Reply with a single Python code block (no prose, no .docx file). Given a numpy array `p_mod` of moderated p-values from the Golub data and Storey's `pi0_hat`, produce a matplotlib histogram with 50 bins (density scaled), overlay a horizontal dashed line at density 1, overlay a horizontal dotted line at `pi0_hat`, and `axvspan(0, 0.1)` + `axvspan(0.5, 1.0)` to shade the spike-of-alternatives and uniform-null regions. Title the figure, label both axes, include a legend."
 
 For each of (a), (b), and (c): paste the AI's code, note any corrections you had to make, and include a one-paragraph interpretation of the results in your own words.
 
@@ -101,17 +103,21 @@ Explain what makes Specification B better.
 
 **(c)** Describe one specific error you encountered during today's labs—whether in AI-generated code, your own code, or a collaborator's analysis. What was the error? How did you catch it? What statistical knowledge was required to recognize it?
 
-Suggested AI prompt for follow-up (paste-ready, with R-specific format directive):
+Suggested AI prompt for follow-up (paste-ready, with Python-specific format directive):
 
-> "Reply with a single R code block (no prose, no .docx file). Here is a snippet of analysis code: [paste your snippet]. Identify the most likely statistical error and write a corrected version of the snippet. If the original is correct, return the same code unchanged with a one-line comment confirming this."
+> "Reply with a single Python code block (no prose, no .docx file). Here is a snippet of analysis code: [paste your snippet]. Identify the most likely statistical error and write a corrected version of the snippet. If the original is correct, return the same code unchanged with a one-line comment confirming this."
 
-**(d) A short review — you vs. AI.** You receive a complete differential expression analysis from a collaborator. It uses raw $t$-tests with BH correction on a microarray dataset with 72 samples. Write a short review (3–4 sentences) describing what's adequate and what should be changed, and why. *(Hint: connect this to Lecture 2's argument that `limma`'s empirical-Bayes variance shrinkage is preferred over raw $t$-tests when $n$ is small. The [Decision Guide](../syllabus/decision-guide.qmd) summarizes the recommended methods.)*
+**(d) A short review — three-turn AI exchange.** *This is the multi-turn AI exercise required for this homework.* You receive a complete differential expression analysis from a collaborator. It uses raw two-sample $t$-tests with BH correction on a microarray dataset with 72 samples.
 
-Now ask an AI for *its* review of the same scenario:
+- **Turn 1 (your review).** Write a 3–4-sentence review describing what's adequate and what should be changed, and why. *(Hint: connect this to Lecture 2's argument that empirical-Bayes variance shrinkage — the moderated $t$-statistic — is preferred over raw $t$-tests when $n$ is small. The [Decision Guide](../syllabus/decision-guide.qmd) summarizes the recommended methods.)*
 
-> "Reply in three to four sentences only (no .docx file). A collaborator submitted a differential expression analysis on a microarray dataset with $n = 72$ samples using raw two-sample $t$-tests with Benjamini–Hochberg FDR correction. Write a brief critical review explaining what is adequate about this approach and what should be changed, and why."
+- **Turn 2 (AI's review of the same scenario).** Prompt: *"Reply in three to four sentences only (no .docx file). A collaborator submitted a differential expression analysis on a microarray dataset with $n = 72$ samples using raw two-sample $t$-tests with Benjamini–Hochberg FDR correction. Write a brief critical review explaining what is adequate about this approach and what should be changed, and why."*
 
-Compare your review to the AI's: what did the AI catch that you missed; what did you catch that the AI missed; did either raise false alarms; which review would you submit if you could only pick one?
+- **Turn 3 (AI critiques *your* review).** Paste your Turn-1 review into the prompt: *"Reply in three to four sentences only (no .docx file). I wrote the following review of a colleague's differential expression analysis: [paste your Turn-1 review]. Critique my review for completeness, accuracy, and tone. Did I miss any important methodological issues that a statistical reviewer should flag? Did I overstate any concern?"*
+
+- **Final synthesis.** Combine the best points from all three turns into a single 3–5-sentence review you would actually send to the collaborator. State explicitly which points came from you, which from the AI's review of the scenario, and which came from the AI's critique of your review.
+
+- **Reflection.** What did this three-turn exchange teach you about using AI as a reviewer? Were the AI's contributions complementary to your own, or did they substantially overlap? Did the AI catch issues you missed, or did you catch issues the AI missed?
 
 ---
 
