@@ -17,7 +17,8 @@ format:
 ```{=html}
 <style>
 .reveal .slides { font-size: 0.78em; }
-.reveal h1, .reveal h2 { font-size: 1.5em; }
+.reveal h1 { font-size: 2.4em; }
+.reveal h2 { font-size: 1.5em; }
 .reveal table { font-size: 0.9em; }
 .reveal blockquote { font-size: 0.95em; }
 </style>
@@ -208,7 +209,7 @@ Golub et al. (1999) is, in many ways, the founding example of the kind of datase
 
 ---
 
-## {.centered}
+## The Golub data at a glance
 
 ::: {style="font-size: 1.3em;"}
 | | |
@@ -365,9 +366,12 @@ We'll come back to this histogram in Lecture 2, where it turns from a diagnostic
 
 ---
 
-## {.centered}
+## The canonical diagnostic: spike + flat tail with two reference lines
 
-![](images/pval-histogram-pathologies.png){fig-alt="Storey & Tibshirani (2003) Figure 1: p-value histogram from the Hedenfalk breast cancer dataset; dashed line at the uniform-null density, dotted line at the estimated null proportion" width="65%"}
+![](images/pval-histogram-pathologies.png){fig-alt="Storey & Tibshirani (2003) Figure 1: p-value histogram from the Hedenfalk breast cancer dataset; dashed line at the uniform-null density, dotted line at the estimated null proportion" width="55%"}
+
+**Dashed line:** density if all genes were null (uniform; height = 1).
+**Dotted line:** estimated density of the null genes ($\hat\pi_0$, read off the flat region) — the central quantity in FDR estimation, developed in Lecture 2.
 
 ::: {.notes}
 This is the canonical version of the diagnostic, from Storey & Tibshirani (2003). The histogram is the 3,170 p-values from the Hedenfalk breast cancer dataset — a different experiment from Golub, but the same shape: a spike near zero, then a roughly flat tail.
