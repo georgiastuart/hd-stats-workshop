@@ -85,7 +85,7 @@ shrinking each coordinate toward the grand mean of all coordinates. The shrinkag
 ```{python}
 #| label: fig-js-shrinkage
 #| echo: false
-#| fig-cap: "James–Stein shrinkage in action. Twenty true means $\\theta_i$ are drawn from $N(0,1)$; each is observed once with unit noise, yielding $y_i \\sim N(\\theta_i, 1)$. The MLE puts $\\hat\\theta_i = y_i$ (top, large dots). The James–Stein estimator shrinks each $y_i$ toward the grand mean $\\bar y$ by the data-dependent factor in the JS formula (bottom, small dots, with arrows showing the shrinkage). The total squared error is reduced: under repeated simulations, JS averages a 35–45% lower sum of squared errors than the MLE for this regime."
+#| fig-cap: "James–Stein shrinkage in action. Twenty true means $\\theta_i$ are drawn from $N(0,1)$ and each is observed once with unit noise, yielding $y_i \\sim N(\\theta_i, 1)$. **Top row (gray):** MLE estimates $\\hat\\theta_i = y_i$, plotted on the horizontal axis at their observed values. **Bottom row (red):** James–Stein estimates $\\hat\\theta_i^{\\,\\mathrm{JS}}$, plotted at the same horizontal scale. The blue dashed line is the grand mean $\\bar y$. Each arrow connects an MLE to its JS estimate; every arrow points *toward $\\bar y$*. The JS points are visibly clustered more tightly around $\\bar y$ than the MLE points — the spread of the estimates has been reduced by the shrinkage factor $c$."
 #| fig-height: 4
 sim_rng = np.random.default_rng(42)
 d = 20
@@ -97,36 +97,56 @@ ss = np.sum((y - ybar) ** 2)
 c = max(0.0, 1 - (d - 3) * sigma ** 2 / ss)
 theta_js = ybar + c * (y - ybar)
 
-fig, ax = plt.subplots(figsize=(8.5, 4))
-order = np.argsort(theta)
-xs = np.arange(d)
-
-# MLE points (top row) and JS points (bottom row)
+fig, ax = plt.subplots(figsize=(9, 4))
 y_pos_mle, y_pos_js = 1.0, 0.0
-ax.scatter(xs, np.full(d, y_pos_mle), s=60, color="#444",
-           label=r"MLE $\hat\theta_i = y_i$", zorder=3)
-ax.scatter(xs, np.full(d, y_pos_js), s=60, color="#c0504d",
-           label=r"James–Stein $\hat\theta_i^{\,\mathrm{JS}}$", zorder=3)
 
-# Annotate each point with its value to make shrinkage visible
+# Draw a horizontal line marking ybar
+ax.axvline(ybar, color="#1f77b4", linestyle="--", lw=1.2, alpha=0.7, zorder=1)
+ax.text(ybar, 1.55, fr"$\bar y = {ybar:+.2f}$", color="#1f77b4",
+        ha="center", va="bottom", fontsize=10)
+
+# Faint horizontal guides for each row
+ax.axhline(y_pos_mle, color="#999", alpha=0.25, lw=0.6, zorder=0)
+ax.axhline(y_pos_js, color="#999", alpha=0.25, lw=0.6, zorder=0)
+
+# Plot MLE (top) and JS (bottom) at their actual values
+ax.scatter(y, np.full(d, y_pos_mle), s=60, color="#444",
+           label=r"MLE $\hat\theta_i = y_i$", zorder=4)
+ax.scatter(theta_js, np.full(d, y_pos_js), s=60, color="#c0504d",
+           label=r"James–Stein $\hat\theta_i^{\,\mathrm{JS}}$", zorder=4)
+
+# Draw an arrow from each MLE to its JS estimate (slanted, visualizing the shrinkage)
 for j in range(d):
-    ax.text(xs[j], y_pos_mle + 0.15, f"{y[order][j]:+.1f}",
-            ha="center", va="bottom", fontsize=7, color="#444")
-    ax.text(xs[j], y_pos_js - 0.15, f"{theta_js[order][j]:+.1f}",
-            ha="center", va="top", fontsize=7, color="#c0504d")
     ax.annotate(
-        "", xy=(xs[j], y_pos_js + 0.05), xytext=(xs[j], y_pos_mle - 0.05),
-        arrowprops=dict(arrowstyle="-|>", color="#888", lw=0.7),
+        "", xy=(theta_js[j], y_pos_js + 0.06),
+        xytext=(y[j], y_pos_mle - 0.06),
+        arrowprops=dict(arrowstyle="-|>", color="#888", lw=0.6, alpha=0.8),
+        zorder=2,
     )
 
-ax.axhline(y_pos_js, color="#c0504d", alpha=0.15, lw=0.8)
-ax.axhline(y_pos_mle, color="#444", alpha=0.15, lw=0.8)
-ax.set_xticks([])
+# Row labels at the extreme left
+xmin = min(y.min(), theta_js.min()) - 0.5
+ax.text(xmin, y_pos_mle, "MLE  →", ha="right", va="center", color="#444", fontsize=10)
+ax.text(xmin, y_pos_js, "JS  →", ha="right", va="center", color="#c0504d", fontsize=10)
+
+ax.set_xlabel("Estimate value")
 ax.set_yticks([])
-ax.set_xlim(-0.8, d - 0.2)
-ax.set_ylim(-0.6, 1.6)
-ax.set_title(f"Each MLE is pulled toward $\\bar y = {ybar:+.2f}$ by shrinkage factor $c = {c:.2f}$")
+ax.set_ylim(-0.5, 1.7)
+ax.spines["left"].set_visible(False)
+ax.set_title(rf"Each $y_i$ is shrunk toward $\bar y$ by factor $c = {c:.2f}$; the JS row is visibly tighter")
 ax.legend(loc="upper left", frameon=False, fontsize=9)
+
+# Annotate the spread reduction in a corner
+mle_spread = float(np.std(y, ddof=0))
+js_spread = float(np.std(theta_js, ddof=0))
+ax.text(
+    0.99, 0.05,
+    f"SD(MLE) = {mle_spread:.2f}\nSD(JS) = {js_spread:.2f}",
+    transform=ax.transAxes, ha="right", va="bottom",
+    fontsize=9, color="#444",
+    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#bbb", lw=0.7),
+)
+
 plt.tight_layout()
 plt.show()
 ```
