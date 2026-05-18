@@ -76,8 +76,10 @@ hd-stats-workshop/
 
 Every lecture has **both** an essay and a slide deck:
 
-- **Essays** (`lecture{1,2,3,4}.qmd`): HTML article + PDF, classic-academic prose with inline DOI links to primary sources. The essay is the readable, citable form of the lecture content. No live code in essays.
-- **Slide decks** (`lecture{1,2,3,4}-slides.qmd`): Reveal.js. Lecture 1 slides are image-driven with speaker notes; lectures 2/3/4 slides combine on-slide narrative with executable Python code that generates figures live via the `hd-stats` kernel.
+- **Essays** (`lecture{1,2,3,4}.qmd`): HTML article + PDF, classic-academic prose with inline DOI links to primary sources. All essays now contain **executable Python code blocks** that generate figures inline (both simulation and real-data, e.g., Golub) via the `hd-stats` kernel. The essay is the canonical, citable, figure-rich form.
+- **Slide decks** (`lecture{1,2,3,4}-slides.qmd`): Reveal.js. Every image- or math-only slide is wrapped in a two-column layout with a reading-guide column. All slide decks use the inline CSS block (body 0.78em, h1 2.4em, h2 1.5em — see "Slide CSS" below).
+
+**Lecture 1 = hypothesis testing**; **Lecture 2 = estimation.** Day 1 thus has two complementary lectures (deciding which genes to call significant; estimating quantities from the same histogram). BH and Storey's $q$-values live in L1; Stein/JS/empirical-Bayes/two-groups/local FDR/empirical null live in L2. Day 2 continues the estimation theme (L3 = dimension reduction; L4 = penalized regression).
 
 **Assessments and labs** follow a dual-form pattern:
 - `assessments/*.qmd` — readable HTML/PDF web reference.
@@ -90,6 +92,70 @@ Every lecture has **both** an essay and a slide deck:
 - **LO1**: Multiple testing, FDR control, empirical Bayes
 - **LO2**: Dimension reduction (PCA/UMAP), penalized regression (ridge/LASSO/elastic net)
 - **LO3**: Critical evaluation of analysis code and AI-generated output
+
+## Style and Pedagogical Conventions
+
+The following conventions were established by iterative review; preserve them across future edits.
+
+### Lecture essays
+
+- **Open every lecture with an `## Orientation` paragraph** (~5–8 sentences) that names: the question the lecture answers, the methods developed, the recurring example, and the bridge to the next lecture. The essay arc is then anchored by this paragraph.
+- **Anchor with a primary paper, not an aphorism.** L1 = Caspi 2003 (5-HTTLPR) and Border 2019; L2 = Stein 1956 / Efron–Morris 1977 / Singh 2002; L3 = Turk-Pentland eigenfaces; L4 = the MammaPrint / Duke "metagene" cases. Link to DOIs inline.
+- **Use the Golub data as the recurring concrete example** across L1–L2 and Labs 1–2. Where a figure can be generated from Golub directly, prefer that to simulation.
+- **Figures are abundant and inline.** Generate them with `{python}` blocks that read from `data/golub_*.csv` (essays live in `lectures/`, so use `../data/golub_*.csv`). Mix simulation (for paradoxes, what-if curves) with real Golub data (for concrete results). Use `#| echo: false` so the essay reads as prose with figures, not as code.
+- **Every figure has a `#| fig-cap`** explaining what to look at. The caption is the figure's reading guide; prose around the figure draws the conclusion.
+- **matplotlib mathtext quirk:** `\boldsymbol` is not supported in figure labels/titles — use `\theta` directly. Markdown-level math via MathJax handles `\boldsymbol` fine.
+- **Cross-link lectures explicitly** in the closing paragraph (L1 → L2 = testing → estimation; L2 → Day 2 = continued estimation).
+
+### Slide decks
+
+- **No punchy aphorisms.** Avoid single-sentence centered slides like "The framework exists." or "Same biology. Different results." Replace with academic prose or denser content. The exception: multi-item instructional `. . .` reveals (BH equation → theorem; FWER vs. FDR contrast; three reinforcing mechanisms) are pedagogically useful and may stay.
+- **Every image-only or math-only slide gets a two-column layout** (`:::: {.columns}` + `::: {.column}` × 2) with a reading-guide column. Pattern: image/figure on left (55–62%), reading guide on right (45–38%). The reading guide answers: what claim is being made, how to read the axes/labels, what the takeaway is.
+- **Slide titles state the claim.** Not "The 8,000-citations slide" but "A field-defining finding — and an inconsistent replication record." Not "Bonferroni correction" but "Bonferroni: divide the per-test threshold by $m$."
+- **Section dividers (`# Title {.centered}`) need a real h1 size.** With body shrunk to 0.78em (see CSS below), a default h1 looks like body text — restore it explicitly.
+- **Slide CSS block.** Paste this immediately after the YAML in every slide deck so font sizes match across lectures:
+  ```html
+  ```{=html}
+  <style>
+  .reveal .slides { font-size: 0.78em; }
+  .reveal h1 { font-size: 2.4em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal table { font-size: 0.9em; }
+  .reveal blockquote { font-size: 0.95em; }
+  </style>
+  ```
+  ```
+- **Speaker notes** (`::: {.notes}`) describe *delivery* — what to emphasize, what to pause on, what students often miss. They do not duplicate slide text. Use them sparingly.
+- **Empty `## {.centered}` slides read as blank.** Always give the slide a real title; if the slide is content-only, name the content.
+- **Slides mirror essay structure.** When the essay sections change order or get new sections, push the same shape into the slides. Don't let them drift apart.
+
+### Worked examples (figures that earn their keep)
+
+- **James–Stein shrinkage figure.** Place MLE and JS estimates on a shared *value* axis (not sequential positions) so the spread of each row is visually meaningful, and draw slanted arrows connecting paired estimates. Annotate $\bar y$ as a vertical line and report SD(MLE) and SD(JS) in an inset. Visualizes shrinkage as motion toward the grand mean and as spread reduction.
+- **Two-groups mixture.** Show three filled regions: $\pi_0 f_0(z)$, $(1-\pi_0) f_1(z)$, and their sum $f(z)$. The viewer should *see* the decomposition.
+- **Local FDR curve.** Plot $\widehat{\mathrm{fdr}}(z)$ from -6 to 6, with the 0.20 (or 0.10) threshold marked and the $z$-crossings annotated. Pair with the histogram above it when possible.
+- **Discovery-count bar chart.** When comparing Bonferroni / BH / local FDR (or any three methods) on the same dataset, a labeled bar chart with the count on each bar is the cleanest summary.
+- **PDF page extraction for figures from papers.** Use `pdftoppm -r 250 -f $page -l $page -x $x -y $y -W $w -H $h -png input.pdf out` for precise region cropping. Avoid `sips --cropOffset` — its offset semantics are easy to get wrong.
+
+### Labs
+
+- **Lab intro** explicitly names the lectures the lab applies. Example: "From Lecture 1 (testing): BH and Storey's $q$-values. From Lecture 2 (estimation): two-groups, local FDR, empirical null."
+- **AI prompts in labs must lead with a format directive.** The UMass campus GenAI platform (LibreChat) will return a `.docx` for long answers unless told otherwise. The prompt template:
+  > "Reply with a single Python code block (no prose, no `.docx` file, no surrounding explanation — just runnable code I can paste into a Colab cell). [Then the actual prompt.]"
+- **Name the imports the AI should use.** If the prompt expects `statsmodels.stats.multitest.multipletests` with `method='fdr_bh'`, say so. Reduces variation in student outputs and makes the critique-checklist step more concrete.
+- **Critique checklists are part of the lab.** After every AI-assisted code cell, students answer a small table of "did the AI do X correctly?" The checklist is the LO3 evidence.
+
+### Resources and copyrighted material
+
+- **`resources/papers/` is gitignored.** Source PDFs of journal articles are archived locally for instructor reference (e.g., for extracting figures or quoting). Do not commit them — the public GitHub repo would expose them, which is a copyright issue. The figure *extracts* (single figures used for educational/classroom purposes) are committed in `lectures/images/` under fair use.
+- **`lectures/images/IMAGES_TODO.md`** records the provenance of each extracted figure, pointing back to the archived source PDF.
+
+### Workflow and infrastructure
+
+- **`hd-stats` Jupyter kernel cold-start is slow** (~30 seconds). The render appears to "stall" but is just waiting for the kernel. Don't kill it; wait. Subsequent renders in the same session are fast.
+- **`quarto publish gh-pages` re-renders the whole site** (4 lectures, 4 slide decks, all labs and assessments). Budget ~5 minutes per deploy.
+- **A "blank" gh-pages worktree at `/private/tmp/hd-stats-ghpages`** can be left behind by an interrupted publish. Run `git worktree prune` to clear it before retrying.
+- **Verify deploys against the live URL.** GitHub Pages caches aggressively; a hard refresh (Cmd+Shift+R) is often needed to see the deployed changes.
 
 ## Code Conventions
 
