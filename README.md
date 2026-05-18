@@ -88,13 +88,16 @@ hd-stats-workshop/
 │   ├── course-design.qmd  # Pedagogical design (UbD framework)
 │   └── decision-guide.qmd # Method-selection flowcharts (Mermaid)
 ├── lectures/
-│   ├── lecture1.qmd     # Essay (Lec 1) — read-aloud speaking notes
-│   ├── lecture1-slides.qmd # Reveal.js slide deck for Lecture 1
-│   ├── lecture2.qmd     # Reveal.js slides for Lecture 2 (FDR & empirical Bayes)
-│   ├── lecture3.qmd     # Reveal.js slides for Lecture 3 (PCA / UMAP)
-│   ├── lecture4.qmd     # Reveal.js slides for Lecture 4 (penalized regression)
+│   ├── lecture1.qmd        # Essay: "The Gene That Wasn't There" (L1 = hypothesis testing)
+│   ├── lecture1-slides.qmd # Reveal.js slide deck for L1
+│   ├── lecture2.qmd        # Essay: "The Histogram That Was Too Wide" (L2 = estimation)
+│   ├── lecture2-slides.qmd # Reveal.js slide deck for L2
+│   ├── lecture3.qmd        # Essay: "The Map That Drew Itself" (L3 = dimension reduction)
+│   ├── lecture3-slides.qmd # Reveal.js slide deck for L3
+│   ├── lecture4.qmd        # Essay: "Seventy Genes and a Fraud" (L4 = penalized regression)
+│   ├── lecture4-slides.qmd # Reveal.js slide deck for L4
 │   ├── lecture-outlines.md # Master outline at three levels of detail
-│   └── images/IMAGES_TODO.md # List of missing image assets for Lecture 1 slides
+│   └── images/IMAGES_TODO.md # Provenance of L1 slide images extracted from source PDFs
 ├── assessments/
 │   ├── pre-homework.qmd # Web-readable pre-homework
 │   └── homework.qmd     # Web-readable Day 1 → Day 2 homework
@@ -144,15 +147,21 @@ The website is the front door. The Colab links in the navbar take students *dire
 
 ## Teaching workflow
 
-### Day 1 morning — Lecture 1 (essay-style)
+Every lecture (L1–L4) has **both** an essay (`lectureN.qmd`) and a slide deck (`lectureN-slides.qmd`). The two are kept in lockstep: the essay is the canonical, citable form with full prose and inline figures generated from real Golub data; the slide deck is the in-class delivery form, with the same figures alongside reading-guide column layouts. Either can be read alone; together they support both reading and teaching workflows.
 
-This is the only lecture with a separate essay file. The intent is that you **read the essay aloud** while projecting the slides; the slides carry the images (paper covers, figures), and the essay carries the prose. Open `lecture1.qmd` rendered (or print as PDF) for the read-aloud script.
+### Day 1 — testing then estimation
 
-### Day 1 PM and Day 2 — Lectures 2, 3, 4 (slide-deck style)
+- **Lecture 1 — *The Gene That Wasn't There* (hypothesis testing).** Multiple-testing problem (Caspi 2003 / Border 2019), Golub's 3,051 tests, the $p$-value histogram diagnostic, Bonferroni / FWER, the false discovery rate, the BH procedure, and Storey's $q$-values. The dead-salmon study and the field-wide 5-HTTLPR false positive close the arc.
+- **Lecture 2 — *The Histogram That Was Too Wide* (estimation).** The same histogram, reframed as an estimation problem. Stein's paradox and James–Stein shrinkage (Efron–Morris baseball); empirical Bayes; the two-groups mixture model; the local FDR as a per-test posterior; the empirical null (Singh prostate-cancer cautionary case); `limma`'s variance shrinkage as a parallel EB application.
 
-Each is a single Reveal.js deck (`.qmd` → HTML when rendered). Press `S` in the deck to open speaker view; the on-slide narrative + speaker notes carry the prose. Code blocks render figures live during the build.
+### Day 2 — geometry then prediction
 
-For students who want a printable handout, each of these decks also renders as an article PDF (in `_pdf/`).
+- **Lecture 3 — *The Map That Drew Itself* (dimension reduction).** PCA and the SVD, scree plots and parallel analysis, the Marchenko–Pastur / BBP detection threshold, t-SNE and UMAP, the systematic ways nonlinear embeddings mislead (UMAP-on-noise), and the PCA-first practical workflow.
+- **Lecture 4 — *Seventy Genes and a Fraud* (penalized regression).** Ridge / LASSO / elastic net, the geometry of sparsity, cross-validation for $\lambda$ selection, bootstrap stability for LASSO selection, and the two case studies (MammaPrint vs. Duke metagene) that show the same statistical method producing opposite outcomes for reasons entirely about validation.
+
+### Running a lecture
+
+Open the essay (`lectureN.qmd`) and the slide deck (`lectureN-slides.qmd`) side-by-side. Project the slides; refer to the essay for the dense prose that the slide reading guides summarize. Press `S` in the deck to open speaker view for any speaker notes that go beyond the slide content. Each deck also renders as an article PDF (in `_pdf/`) for students who want a printable handout.
 
 ### Labs (4 × 1 hour)
 
