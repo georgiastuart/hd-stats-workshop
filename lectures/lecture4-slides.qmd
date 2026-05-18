@@ -1,7 +1,7 @@
 ---
 title: "Lecture 4: Penalized Regression & Modern AI Tools"
-subtitle: "Regularization, Variable Selection, and LLMs in Data Analysis"
-date: "Day 2, 10:00–11:00"
+subtitle: "Estimating Sparse Regression Coefficients in $p \\gg n$"
+date: "2026-05-16"
 format:
   revealjs:
     theme: default
@@ -18,26 +18,74 @@ format:
     fig-pos: 'H'
 ---
 
-# The Model That Memorizes Noise {.centered}
+```{=html}
+<style>
+.reveal .slides { font-size: 0.78em; }
+.reveal h1 { font-size: 2.4em; }
+.reveal h2 { font-size: 1.5em; }
+.reveal table { font-size: 0.9em; }
+.reveal blockquote { font-size: 0.95em; }
+</style>
+```
+
+# When OLS Breaks: Sparse Regression in $p \gg n$ {.centered}
 
 ---
 
-## Perfect Training, Catastrophic Prediction
+## Perfect training, catastrophic prediction
 
-Consider an ordinary-least-squares fit predicting patient outcomes from 500 gene-expression features on 80 patients.
+:::: {.columns}
+::: {.column width="50%"}
+**The setup.** OLS fit predicting an outcome from 500 gene-expression features on 80 patients.
 
-. . .
+**Result.**
 
-- **Training $R^2$**: 0.99 — near-perfect fit on the training data
-- **Test $R^2$**: $-0.3$ — worse than predicting the sample mean
+- **Training $R^2$**: 0.99 — near-perfect fit on the training data.
+- **Test $R^2$**: $-0.3$ — worse than predicting the sample mean.
 
-. . .
+The model memorized noise. With more features than samples, the OLS system is underdetermined: infinitely many coefficient vectors interpolate the training data. The pseudoinverse picks one with no claim to generalize.
 
-The model has memorized noise. When the number of features exceeds the number of samples, the OLS system is underdetermined: there are infinitely many coefficient vectors that interpolate the training data exactly. The fit reflects this degeneracy, not any property of the underlying biology.
+This is the failure mode that *regularization* is designed to prevent.
+:::
+::: {.column width="50%"}
+```{python}
+#| label: fig-ols-blowup-slide
+#| echo: false
+#| fig-height: 4
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 
-. . .
+rng = np.random.default_rng(2026)
+n_obs, p_max = 80, 75
+ps = np.arange(5, p_max + 1, 5)
+n_reps = 20
+tr_r2, te_r2 = np.zeros((len(ps), n_reps)), np.zeros((len(ps), n_reps))
+for ip, p in enumerate(ps):
+    for r in range(n_reps):
+        X_all = rng.normal(size=(n_obs * 2, p))
+        beta = np.zeros(p); beta[: min(10, p)] = rng.normal(size=min(10, p))
+        y_all = X_all @ beta + rng.normal(scale=1.0, size=n_obs * 2)
+        Xtr, Xte = X_all[:n_obs], X_all[n_obs:]
+        ytr, yte = y_all[:n_obs], y_all[n_obs:]
+        m = LinearRegression().fit(Xtr, ytr)
+        tr_r2[ip, r] = m.score(Xtr, ytr)
+        te_r2[ip, r] = m.score(Xte, yte)
 
-This is the overfitting failure mode that regularization is designed to prevent.
+fig, ax = plt.subplots(figsize=(5.5, 4))
+ax.plot(ps, tr_r2.mean(1), "o-", color="#3b78cc", lw=2, label="Train $R^2$")
+ax.plot(ps, te_r2.mean(1), "s-", color="#c0504d", lw=2, label="Test $R^2$")
+ax.axhline(0, color="#888", lw=0.8, linestyle=":")
+ax.axvline(n_obs, color="#888", lw=1, linestyle="--", label=f"$p = n = {n_obs}$")
+ax.set_xlabel(r"$p$ (with $n=80$)")
+ax.set_ylabel("$R^2$")
+ax.set_title("OLS overfits then breaks")
+ax.legend(loc="lower left", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
 
 ---
 
@@ -132,15 +180,43 @@ LASSO simultaneously performs **estimation** and **variable selection**.
 
 ---
 
-## Geometry: Why $\ell_1$ Gives Sparsity
+## Geometry: why $\ell_1$ gives sparsity
 
-The constraint region for $\ell_1$ is a diamond (cross-polytope). The constraint for $\ell_2$ is a sphere.
+```{python}
+#| label: fig-l1-l2-slide
+#| echo: false
+#| fig-height: 4
+from matplotlib.patches import Circle, Polygon
+import numpy as np
+import matplotlib.pyplot as plt
 
-The OLS solution, projected onto the constraint set, is more likely to hit a **corner** of the diamond (where coordinates are zero) than the smooth surface of the sphere.
+def _draw(ax, mode):
+    centre = (1.4, 0.7)
+    for r in np.linspace(0.25, 1.6, 6):
+        th = np.linspace(0, 2*np.pi, 200)
+        ax.plot(centre[0] + r * np.cos(th),
+                centre[1] + 0.55 * r * np.sin(th), color="#888", lw=0.7, alpha=0.7)
+    ax.plot(*centre, "ko", markersize=7)
+    ax.text(centre[0] + 0.08, centre[1] + 0.06, "OLS", fontsize=10)
+    if mode == "ridge":
+        ax.add_patch(Circle((0, 0), 0.9, fc="#cfe2f3", ec="#2a4d9c", alpha=0.6, lw=1.6))
+        ax.plot(0.86, 0.42, "ro", markersize=9)
+        ax.set_title(r"Ridge ($\ell_2$): generic tangent")
+    else:
+        ax.add_patch(Polygon([(0, 0.95), (0.95, 0), (0, -0.95), (-0.95, 0)],
+                              fc="#fdebd0", ec="#a35313", alpha=0.7, lw=1.6))
+        ax.plot(0.95, 0, "ro", markersize=9)
+        ax.set_title(r"LASSO ($\ell_1$): tangent on vertex $\Rightarrow \beta_2 = 0$")
+    ax.axhline(0, color="#bbb", lw=0.5); ax.axvline(0, color="#bbb", lw=0.5)
+    ax.set_xlim(-2, 3); ax.set_ylim(-1.5, 1.8)
+    ax.set_xlabel(r"$\beta_1$"); ax.set_ylabel(r"$\beta_2$"); ax.set_aspect("equal")
 
-. . .
+fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+_draw(axes[0], "ridge"); _draw(axes[1], "lasso")
+plt.tight_layout(); plt.show()
+```
 
-In $p$ dimensions: the $\ell_1$ ball has $2p$ vertices (one per axis), making sparse intersections very likely.
+The $\ell_1$ ball has $2p$ vertices on the coordinate axes. The level-set ellipsoid of the squared-error loss generically first hits the diamond *at a vertex* — where one or more coordinates are zero. Sparsity is a geometric consequence of the diamond's corners, not a tuning trick.
 
 ---
 
@@ -180,21 +256,73 @@ plt.show()
 
 ---
 
-## Choosing $\lambda$: Cross-Validation
+## Choosing $\lambda$: cross-validation
 
-**$K$-fold cross-validation**:
+:::: {.columns}
+::: {.column width="50%"}
+**$K$-fold CV recipe**
 
-1. Split data into $K$ folds (typically $K = 10$)
-2. For each $\lambda$: fit on $K-1$ folds, predict on held-out fold
-3. Average the prediction error across folds
-4. Choose $\lambda$ that minimizes CV error
+1. Split into $K$ folds (typically $K = 10$).
+2. For each $\lambda$: fit on $K-1$ folds, predict on held-out fold.
+3. Average prediction error across folds.
+4. Choose $\lambda$ minimizing CV error.
 
-. . .
+**Two operating points**
 
-### Two common choices
+- $\lambda_{\min}$ — minimizes mean CV error; best prediction.
+- $\lambda_{1\mathrm{se}}$ — largest $\lambda$ within 1 SE of $\lambda_{\min}$; sparser model with statistically indistinguishable error.
 
-- $\lambda_{\min}$: minimizes CV error (best prediction)
-- $\lambda_{1\text{se}}$: largest $\lambda$ within 1 SE of the minimum (more parsimonious model)
+For *reporting* a signature, $\lambda_{1\mathrm{se}}$ is the better choice — interpretability matters and parsimony aids replication.
+:::
+::: {.column width="50%"}
+```{python}
+#| label: fig-cv-curve-slide
+#| echo: false
+#| fig-height: 4
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold
+
+expr = pd.read_csv("../data/golub_expression.csv", index_col=0)
+meta = pd.read_csv("../data/golub_metadata.csv")
+labels = meta["subtype"].values
+y_b = (labels == "AML").astype(int)
+X_std = StandardScaler().fit_transform(expr.values.T)
+g_var = X_std.var(axis=0)
+X200 = X_std[:, np.argsort(g_var)[-200:]]
+lam_grid = np.logspace(-3, 0.5, 20)
+kf = KFold(n_splits=5, shuffle=True, random_state=2026)
+cv_dev = np.zeros((len(lam_grid), 5))
+for il, lam in enumerate(lam_grid):
+    for k, (tr, te) in enumerate(kf.split(X200)):
+        clf = LogisticRegression(penalty="l1", C=1.0/lam, solver="saga",
+                                  max_iter=4000).fit(X200[tr], y_b[tr])
+        proba = np.clip(clf.predict_proba(X200[te])[:, 1], 1e-6, 1-1e-6)
+        cv_dev[il, k] = -2 * np.mean(y_b[te]*np.log(proba) + (1-y_b[te])*np.log(1-proba))
+mean_dev = cv_dev.mean(axis=1); se_dev = cv_dev.std(axis=1) / np.sqrt(5)
+i_min = int(np.argmin(mean_dev)); lam_min = lam_grid[i_min]
+target = mean_dev[i_min] + se_dev[i_min]
+i_1se = max(i for i, m in enumerate(mean_dev) if m <= target and i >= i_min)
+lam_1se = lam_grid[i_1se]
+
+fig, ax = plt.subplots(figsize=(5.5, 4))
+ax.plot(lam_grid, mean_dev, "o-", color="#3b78cc", lw=2)
+ax.fill_between(lam_grid, mean_dev - se_dev, mean_dev + se_dev,
+                color="#3b78cc", alpha=0.18)
+ax.axvline(lam_min, color="#c0504d", linestyle="--", lw=1.2,
+           label=fr"$\lambda_{{\min}}={lam_min:.3g}$")
+ax.axvline(lam_1se, color="#e8923c", linestyle="--", lw=1.2,
+           label=fr"$\lambda_{{1\mathrm{{se}}}}={lam_1se:.3g}$")
+ax.set_xscale("log")
+ax.set_xlabel(r"$\lambda$"); ax.set_ylabel("CV deviance")
+ax.set_title("5-fold CV (Golub, top 200)")
+ax.legend(loc="upper left", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
 
 ---
 
@@ -276,33 +404,91 @@ The episode resulted in **eighteen retracted papers** and the revocation of Pott
 
 ---
 
-## The Same Method, Different Outcomes
+## The same method, different outcomes
 
-The Duke and MammaPrint analyses applied the **same class of methods** to the **same kind of data** for the **same kind of question**. The differences lay entirely in execution:
+```{python}
+#| label: fig-mammaprint-duke-slide
+#| echo: false
+#| fig-height: 3.6
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-. . .
+def _box(ax, xy, text, w=2.3, h=0.95, fc="#cfe2f3", ec="#2a4d9c"):
+    x, y = xy
+    p = FancyBboxPatch((x - w/2, y - h/2), w, h, boxstyle="round,pad=0.05",
+                       linewidth=1.4, facecolor=fc, edgecolor=ec)
+    ax.add_patch(p); ax.text(x, y, text, ha="center", va="center", fontsize=9.5)
+    return (x, y, w, h)
+def _arrow(ax, p_from, p_to):
+    x0, y0, w0, h0 = p_from; x1, y1, w1, h1 = p_to
+    ax.add_patch(FancyArrowPatch((x0 + w0/2, y0), (x1 - w1/2, y1),
+                                  arrowstyle="-|>", mutation_scale=12,
+                                  linewidth=1.1, color="#444"))
 
-- **Validation**: MammaPrint was tested in a 6,693-patient prospective randomized trial. The Duke signatures were not subjected to comparable external validation.
-- **Reproducibility**: The Duke analysis could not be reproduced because code and data were not shared. The 70-gene signature was independently replicated.
-- **Information leakage**: The Duke pipeline leaked information between training and test sets. The MammaPrint pipeline did not.
+fig, ax = plt.subplots(figsize=(11, 3.6))
+ax.set_xlim(0, 14); ax.set_ylim(0, 5); ax.axis("off")
+ax.text(0.4, 4.4, "MammaPrint", fontsize=11, fontweight="bold", color="#2a4d9c")
+A1 = _box(ax, (2.2, 3.8), "Train: 78 patients\n(van 't Veer 2002)")
+A2 = _box(ax, (5.5, 3.8), "External\nvalidation cohorts")
+A3 = _box(ax, (8.8, 3.8), "MINDACT trial\n6,693 patients", fc="#d6efd0", ec="#2a7d2a")
+A4 = _box(ax, (12.0, 3.8), "FDA clearance\nclinical use", w=2.3, fc="#d6efd0", ec="#2a7d2a")
+for pair in [(A1, A2), (A2, A3), (A3, A4)]: _arrow(ax, *pair)
+ax.text(0.4, 2.0, "Duke metagene", fontsize=11, fontweight="bold", color="#a3372f")
+B1 = _box(ax, (2.2, 1.4), "Train on cell lines\n(Potti, ~2006)")
+B2 = _box(ax, (5.5, 1.4), "Validation on\noverlapping data", fc="#f5dada", ec="#a3372f")
+B3 = _box(ax, (8.8, 1.4), "Patients enrolled\nin trials", fc="#f5dada", ec="#a3372f")
+B4 = _box(ax, (12.0, 1.4), "Retractions /\nlicense revoked", w=2.3, fc="#f5dada", ec="#a3372f")
+for pair in [(B1, B2), (B2, B3), (B3, B4)]: _arrow(ax, *pair)
+plt.tight_layout()
+plt.show()
+```
 
-. . .
-
-The lesson is that regularization is a tool, not a guarantee. A model is only as reliable as the analysis pipeline that produced it.
+Same class of statistical methods on the same kind of data for the same kind of clinical question. Different fate because of the *validation pipeline*: MammaPrint had external validation and a 6,693-patient prospective trial; the Duke metagene work did not. **Regularization is a tool, not a guarantee.** A model is only as reliable as the pipeline that surrounds it.
 
 ---
 
-## A Reproducibility Caveat: LASSO Selection Instability
-
-Even under correct application, LASSO exhibits a notable instability:
-
-. . .
+## A reproducibility caveat: LASSO selection instability
 
 When predictors are correlated — as gene-expression measurements typically are — LASSO selects one representative from each correlated group, with the choice determined essentially arbitrarily by sampling noise. Resampling produces different selected subsets while leaving prediction accuracy nearly unchanged.
 
-. . .
+The implication: **bootstrap stability analysis** is necessary to determine which variables are *consistently* selected, as opposed to selected in any one fit. Elastic net mitigates the instability via the grouping property but does not eliminate it.
 
-The implication is that **bootstrap stability analysis** is necessary to determine which variables are consistently selected, as opposed to selected in any one fit. Elastic net mitigates this via its grouping property.
+```{python}
+#| label: fig-bootstrap-slide
+#| echo: false
+#| fig-height: 4
+from sklearn.linear_model import Lasso
+rng = np.random.default_rng(2026)
+X_top = X_std[:, np.argsort(g_var)[-100:]]
+y_top = y_b.astype(float)
+n_boot = 25
+sel = np.zeros((n_boot, X_top.shape[1]), dtype=int)
+n_samp = X_top.shape[0]
+for b in range(n_boot):
+    idx = rng.integers(0, n_samp, size=n_samp)
+    fit = Lasso(alpha=0.05, max_iter=20000).fit(X_top[idx], y_top[idx])
+    sel[b] = (fit.coef_ != 0).astype(int)
+freq = sel.mean(axis=0); order = np.argsort(freq)
+
+fig, (a1, a2) = plt.subplots(2, 1, figsize=(10, 4),
+                              gridspec_kw=dict(height_ratios=[2.4, 1]),
+                              sharex=True)
+a1.imshow(sel[:, order], aspect="auto", cmap="Blues", interpolation="nearest")
+a1.set_ylabel("Bootstrap")
+a1.set_yticks([])
+a1.set_title(f"Bootstrap LASSO selection (n_boot = {n_boot}; top 100 Golub genes)")
+a2.bar(np.arange(X_top.shape[1]), freq[order], color="#3b78cc",
+       edgecolor="white", width=1.0)
+a2.axhline(0.5, color="#c0504d", linestyle="--", lw=1.2,
+           label="50% threshold")
+a2.set_xlabel("Gene rank (least → most stable)")
+a2.set_ylabel("Sel. freq.")
+a2.set_ylim(0, 1.05)
+a2.legend(loc="upper left", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+Stable genes accumulate on the right of the plot; unstable ones are scattered. A defensible signature must survive bootstrap resampling.
 
 ---
 

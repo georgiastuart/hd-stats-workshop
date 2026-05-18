@@ -22,11 +22,19 @@ This page is the readable web reference.
 
 ## Purpose
 
-This homework consolidates Day 1 material (multiple testing, FDR, critical evaluation). It connects directly to the learning outcomes. You are welcome to use AI for coding tasks, but the conceptual and interpretation questions must reflect your own understanding.
+This homework consolidates Day 1 material and bridges to Day 2. It maps onto the Day-1 structure:
+
+- **Q1 — Multiple Testing Concepts (LO1)**. Exercises **Lecture 1** (hypothesis testing: Bonferroni / FWER, BH / FDR, $q$-values).
+- **Q2 — FDR in Practice (LO1, LO3)**. Connects both Day-1 lectures: BH-adjusted $p$-values from **Lecture 1**; `limma`'s empirical-Bayes variance shrinkage and $\hat\pi_0$ estimation from **Lecture 2**.
+- **Q3 — Evaluating Analysis Output (LO3)**. Exercises the critical-evaluation thread from both lectures and from Labs 1 and 2.
+
+You are welcome to use AI for coding tasks, but the conceptual and interpretation questions must reflect your own understanding.
 
 ---
 
 ## Q1: Multiple Testing Concepts (LO1)
+
+*Exercises Lecture 1 (Bonferroni / FWER and BH / FDR).*
 
 A proteomics experiment measures the abundance of $p = 5{,}000$ proteins in $n = 30$ tissue samples (15 tumor, 15 normal). For each protein, a two-sample $t$-test is performed.
 
@@ -42,13 +50,17 @@ A proteomics experiment measures the abundance of $p = 5{,}000$ proteins in $n =
 
 ## Q2: FDR in Practice (LO1, LO3)
 
-Using the Golub dataset from Lab 2 (or your own dataset), perform the following analysis. **You should use AI to write the code**, but you must evaluate its correctness and interpret the results yourself.
+*Connects both Day-1 lectures: `limma`'s `eBayes` is the empirical-Bayes variance shrinkage from Lecture 2; BH adjustment and Storey's $\hat\pi_0$ are from Lecture 1.*
 
-**(a)** Direct an AI to compute BH-adjusted $p$-values for the ALL vs. AML comparison **using limma** (not raw $t$-tests). Report:
+Using the Golub dataset (introduced in Lecture 1 and used in Labs 1 and 2), perform the following analysis. You should use AI to write the R code, but evaluate its correctness and interpret the results yourself.
 
-- Number of genes significant at FDR $< 0.01$, $< 0.05$, $< 0.10$
+**(a)** Direct an AI to compute BH-adjusted $p$-values for the ALL vs. AML comparison **using `limma`** (not raw $t$-tests). Report the number of genes significant at FDR $< 0.01$, $< 0.05$, $< 0.10$.
 
-Include the prompt you used and note whether the AI spontaneously chose limma or whether you had to direct it.
+Suggested prompt template (paste-ready, with R-specific format directive):
+
+> "Reply with a single R code block (no prose, no .docx file — just runnable code I can paste into an R-kernel Colab cell). Using `limma` with empirical-Bayes variance shrinkage, fit the ALL vs. AML contrast on the Golub expression matrix `expr` (3,051 genes × 72 samples) using subtype labels from `meta`, extract BH-adjusted p-values from `topTable(..., adjust.method = 'BH', number = Inf)`, and print the number of genes with `adj.P.Val` below 0.01, 0.05, and 0.10."
+
+Include the prompt you used and note whether the AI spontaneously chose `limma` or whether you had to direct it.
 
 **(b)** Use the `qvalue` package to estimate $\hat{\pi}_0$. What does this estimate tell you about the dataset?
 
@@ -60,10 +72,12 @@ Include your code (noting what was AI-generated vs. your own) and a one-paragrap
 
 ## Q3: Evaluating Analysis Output (LO3)
 
+*Exercises the critical-evaluation thread from both Day-1 lectures and labs.*
+
 **(a)** Write two specifications for the same analysis task: "Perform differential expression analysis on a microarray dataset comparing treatment and control groups."
 
 - **Specification A**: Vague enough that it would likely produce an incorrect or incomplete analysis.
-- **Specification B**: Precise enough that it would likely produce a correct analysis on the first attempt.
+- **Specification B**: Precise enough that it would likely produce a correct analysis on the first attempt. Name the method, the test, the multiple-testing correction, and the threshold.
 
 Explain what makes Specification B better.
 
@@ -71,7 +85,11 @@ Explain what makes Specification B better.
 
 **(c)** Describe one specific error you encountered during today's labs—whether in AI-generated code, your own code, or a collaborator's analysis. What was the error? How did you catch it? What statistical knowledge was required to recognize it?
 
-**(d)** You receive a complete differential expression analysis from a collaborator. It uses raw $t$-tests with BH correction on a microarray dataset with 72 samples. Write a short review (3--4 sentences) describing what's adequate and what should be changed, and why. *(Hint: consult the [Decision Guide](../syllabus/decision-guide.qmd) for recommended methods.)*
+Suggested AI prompt for follow-up (paste-ready, with R-specific format directive):
+
+> "Reply with a single R code block (no prose, no .docx file — just runnable code I can paste into an R-kernel Colab cell). Here is a snippet of analysis code: [paste your snippet]. Identify the most likely statistical error and write a corrected version of the snippet. If the original is correct, return the same code unchanged with a one-line comment confirming this."
+
+**(d)** You receive a complete differential expression analysis from a collaborator. It uses raw $t$-tests with BH correction on a microarray dataset with 72 samples. Write a short review (3--4 sentences) describing what's adequate and what should be changed, and why. *(Hint: connect this to Lecture 2's argument that `limma`'s empirical-Bayes variance shrinkage is preferred over raw $t$-tests when $n$ is small. The [Decision Guide](../syllabus/decision-guide.qmd) summarizes the recommended methods.)*
 
 ---
 

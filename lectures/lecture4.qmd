@@ -21,6 +21,42 @@ format:
 
 This lecture continues the estimation theme of Lectures 2 and 3, now applied to regression. The problem is to predict an outcome — a clinical phenotype, a treatment response, a disease subtype — from a vector of high-dimensional predictors with more features than observations ($p \gg n$). Ordinary least squares fails by construction in this regime: the system is underdetermined, the pseudoinverse selects a solution with no claim to generalize, and the training fit reflects degeneracy rather than biology. The remedy is *regularization* — adding a penalty term that prefers some coefficient vectors over others — and the three principal regularizers are ridge (an $\ell_2$ penalty that shrinks but does not zero out), LASSO (an $\ell_1$ penalty that produces sparse solutions), and elastic net (a convex combination of the two). The geometry that produces sparse LASSO solutions is the same geometry that makes hyperparameter selection via cross-validation critical: choose the penalty strength badly and you recover either OLS-like overfitting or null-like underfitting. The lecture closes with two case studies in the application of penalized regression to gene-expression-based clinical prediction — MammaPrint and the Duke "metagene" affair — that produced dramatically different outcomes, for reasons that have nothing to do with the choice of penalty and everything to do with how the predictions were validated.
 
+```{python}
+#| label: setup
+#| echo: false
+#| warning: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+from sklearn.linear_model import (
+    Lasso, Ridge, ElasticNet, LinearRegression,
+    LogisticRegression, LogisticRegressionCV
+)
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split, KFold
+import warnings
+warnings.filterwarnings("ignore")
+
+rng = np.random.default_rng(2026)
+plt.rcParams.update({
+    "figure.figsize": (8, 4),
+    "font.size": 11,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+})
+
+# Load Golub for the LASSO / ridge / EN figures
+_expr = pd.read_csv("../data/golub_expression.csv", index_col=0)
+_meta = pd.read_csv("../data/golub_metadata.csv")
+gene_names = _expr.index.values
+X_full = _expr.values.T                       # 72 samples x 3,051 genes
+labels = _meta["subtype"].values
+y_binary = (labels == "AML").astype(int)      # 1 = AML, 0 = ALL
+n_samples_g, n_genes_g = X_full.shape
+X_full_std = StandardScaler().fit_transform(X_full)
+```
+
 ---
 
 ## Perfect training, catastrophic prediction
@@ -28,6 +64,53 @@ This lecture continues the estimation theme of Lectures 2 and 3, now applied to 
 Consider a research team fitting ordinary least squares to predict patient outcomes from 500 gene-expression features measured on 80 patients. The training $R^2$ is 0.99: the model explains the data almost perfectly. The test $R^2$, evaluated on a held-out cohort, is $-0.3$ — worse than predicting the mean for everyone.
 
 The model has memorized noise. With more features than samples, the OLS system is underdetermined: there are infinitely many coefficient vectors that interpolate the training data exactly. Among these, the one that the standard pseudoinverse selects has no particular reason to generalize, and in practice it almost never does. The training fit reflects the degeneracy of the system, not any property of the underlying biology.
+
+```{python}
+#| label: fig-ols-blowup
+#| echo: false
+#| fig-cap: "OLS fails as $p$ approaches $n$. A synthetic regression is generated with $n = 80$ observations and $\\beta^* \\sim N(0, 1)$ for the first ten features (truly nonzero) and zero for the rest. The horizontal axis varies the number of fitted features $p$ from 5 to 75. **Top:** training $R^2$ rises to 1.0 as $p$ approaches $n$ — the model interpolates the data. Test $R^2$ on a held-out cohort collapses, becoming negative (worse than the mean predictor) once $p \\gtrsim 30$. **Bottom:** the squared norm of $\\hat\\beta$ diverges as $p$ approaches $n$ — the fitted coefficients become arbitrarily large to interpolate the training data."
+#| fig-height: 4.5
+n_obs, p_max = 80, 75
+ps = np.arange(5, p_max + 1, 5)
+n_reps = 25
+train_r2 = np.zeros((len(ps), n_reps))
+test_r2 = np.zeros((len(ps), n_reps))
+coef_norm = np.zeros((len(ps), n_reps))
+for ip, p in enumerate(ps):
+    for r in range(n_reps):
+        X_all = rng.normal(size=(n_obs * 2, p))
+        beta = np.zeros(p)
+        beta[: min(10, p)] = rng.normal(size=min(10, p))
+        eps = rng.normal(scale=1.0, size=n_obs * 2)
+        y_all = X_all @ beta + eps
+        Xtr, Xte, ytr, yte = X_all[:n_obs], X_all[n_obs:], y_all[:n_obs], y_all[n_obs:]
+        m = LinearRegression().fit(Xtr, ytr)
+        train_r2[ip, r] = m.score(Xtr, ytr)
+        test_r2[ip, r] = m.score(Xte, yte)
+        coef_norm[ip, r] = np.sum(m.coef_ ** 2)
+
+fig, axes = plt.subplots(2, 1, figsize=(9, 5), sharex=True)
+axes[0].plot(ps, train_r2.mean(1), "o-", color="#3b78cc", label="Training $R^2$")
+axes[0].fill_between(ps, train_r2.mean(1) - train_r2.std(1),
+                     train_r2.mean(1) + train_r2.std(1), color="#3b78cc", alpha=0.18)
+axes[0].plot(ps, test_r2.mean(1), "s-", color="#c0504d", label="Test $R^2$ (held-out)")
+axes[0].fill_between(ps, test_r2.mean(1) - test_r2.std(1),
+                     test_r2.mean(1) + test_r2.std(1), color="#c0504d", alpha=0.18)
+axes[0].axhline(0, color="#888", lw=0.8, linestyle=":")
+axes[0].axvline(n_obs, color="#888", lw=1, linestyle="--", label=f"$p = n = {n_obs}$")
+axes[0].set_ylabel("$R^2$"); axes[0].set_title("OLS overfits, then breaks")
+axes[0].legend(loc="lower left", fontsize=9, frameon=False)
+
+axes[1].plot(ps, np.median(coef_norm, axis=1), "o-", color="#444",
+             label=r"Median $\|\hat\beta\|^2$")
+axes[1].set_yscale("log")
+axes[1].set_xlabel("Number of features $p$ (with $n=80$ observations)")
+axes[1].set_ylabel(r"$\|\hat\beta\|^2$ (log scale)")
+axes[1].axvline(n_obs, color="#888", lw=1, linestyle="--")
+axes[1].set_title("Coefficient norm diverges as $p \\to n$")
+plt.tight_layout()
+plt.show()
+```
 
 This is the canonical failure of unregularized regression in the high-dimensional regime. The remedy — adding a penalty term that prefers some solutions over others — is the subject of this lecture. The lecture develops the three principal regularizers (ridge, LASSO, elastic net), examines the geometry that produces sparse solutions, and then turns to two case studies in which the same statistical method, applied to the same kind of data for the same kind of question, produced dramatically different outcomes. The difference, as will become clear, has nothing to do with the choice of penalty.
 
@@ -63,6 +146,35 @@ $$\mathrm{MSE}(\hat\beta_{\mathrm{ridge}}) = \mathrm{Bias}^2 + \mathrm{Variance}
 
 and an optimal $\lambda$ minimizes the sum. Ridge is the appropriate tool when the underlying coefficient vector is dense — when many predictors have small effects rather than a few having large ones.
 
+```{python}
+#| label: fig-ridge-path
+#| echo: false
+#| fig-cap: "Ridge coefficient path on the top 100 most-variable Golub genes (selected by marginal variance to keep the plot legible). Each line traces one gene's coefficient $\\hat\\beta_j(\\lambda)$ as the regularization parameter $\\lambda$ varies from large (right) to small (left). All coefficients shrink continuously toward zero as $\\lambda$ grows; none of them is exactly zero at any finite $\\lambda$. This is the defining feature of the $\\ell_2$ penalty: it shrinks but does not select."
+#| fig-height: 3.8
+# Top-100 most-variable genes from Golub
+g_var = X_full_std.var(axis=0)
+top_idx = np.argsort(g_var)[-100:]
+X_top = X_full_std[:, top_idx]
+y_top = y_binary.astype(float)
+lambdas = np.logspace(-1, 3, 40)
+ridge_coefs = np.zeros((len(lambdas), X_top.shape[1]))
+for k, lam in enumerate(lambdas):
+    r = Ridge(alpha=lam).fit(X_top, y_top)
+    ridge_coefs[k] = r.coef_
+
+fig, ax = plt.subplots(figsize=(9, 3.8))
+for j in range(X_top.shape[1]):
+    ax.plot(lambdas, ridge_coefs[:, j], color="#3b78cc", lw=0.6, alpha=0.55)
+ax.set_xscale("log")
+ax.set_xlabel(r"$\lambda$ (log scale)")
+ax.set_ylabel(r"Coefficient $\hat\beta_j(\lambda)$")
+ax.set_title("Ridge regularization path: top 100 Golub genes")
+ax.axhline(0, color="#888", lw=0.6)
+ax.invert_xaxis()  # convention: left = small lambda
+plt.tight_layout()
+plt.show()
+```
+
 ---
 
 ## A geometric account of sparsity
@@ -74,6 +186,46 @@ The constrained form of LASSO is $\min \|y - X\beta\|^2$ subject to $\|\beta\|_1
 The LASSO solution is the point of tangency between the level sets of the squared-error loss and the constraint set. The level sets are concentric ellipsoids centered at the OLS solution. As they expand outward, they generically first contact the diamond at a vertex — a point where one or more coordinates are exactly zero. They generically contact the ball at an arbitrary point on its surface, where all coordinates are typically nonzero. Sparsity is therefore not a tuning artifact of LASSO but a geometric consequence of the $\ell_1$ ball's shape.
 
 In $p$ dimensions, the $\ell_1$ ball has $2p$ vertices, one on each signed axis. The probability of vertex contact grows with dimension, and so does the typical sparsity of the LASSO solution. This effect — sparsity emerging from high-dimensional geometry — is one of the reasons the method scales so well.
+
+```{python}
+#| label: fig-l1-l2-geometry
+#| echo: false
+#| fig-cap: "Why the LASSO produces sparsity, the ridge does not. In each panel the gray ellipses are level sets of the squared-error loss around the OLS solution (black dot); the colored shape is the constraint region for the penalty. **Left ($\\ell_2$, ridge):** the constraint set is a Euclidean disk. The first contact between the loss ellipsoid and the disk generically occurs at a point where both coordinates are nonzero. **Right ($\\ell_1$, LASSO):** the constraint set is a diamond with vertices on the coordinate axes. The first contact generically occurs at a vertex, where one coordinate is exactly zero. Sparsity is a geometric consequence of the diamond's corners."
+#| fig-height: 4
+from matplotlib.patches import Circle, Polygon
+def _draw_panel(ax, mode):
+    # Loss ellipses centered at (1.4, 0.7) (OLS solution)
+    centre = (1.4, 0.7)
+    for r in np.linspace(0.25, 1.6, 6):
+        thetas = np.linspace(0, 2*np.pi, 200)
+        x = centre[0] + r * np.cos(thetas)
+        y = centre[1] + 0.55 * r * np.sin(thetas)
+        ax.plot(x, y, color="#888", lw=0.7, alpha=0.7)
+    ax.plot(*centre, "ko", markersize=7)
+    ax.text(centre[0] + 0.08, centre[1] + 0.06, "OLS", fontsize=10)
+    if mode == "ridge":
+        ax.add_patch(Circle((0, 0), 0.9, fc="#cfe2f3", ec="#2a4d9c", alpha=0.6, lw=1.6))
+        tangent = (0.86, 0.42)
+        ax.plot(*tangent, "ro", markersize=9)
+        ax.set_title(r"Ridge ($\ell_2$): tangent point is generic")
+    else:
+        diamond = Polygon([(0, 0.95), (0.95, 0), (0, -0.95), (-0.95, 0)],
+                          fc="#fdebd0", ec="#a35313", alpha=0.7, lw=1.6)
+        ax.add_patch(diamond)
+        tangent = (0.95, 0)
+        ax.plot(*tangent, "ro", markersize=9)
+        ax.set_title(r"LASSO ($\ell_1$): tangent on a vertex $\Rightarrow \beta_2 = 0$")
+    ax.axhline(0, color="#bbb", lw=0.5); ax.axvline(0, color="#bbb", lw=0.5)
+    ax.set_xlim(-2, 3); ax.set_ylim(-1.5, 1.8)
+    ax.set_xlabel(r"$\beta_1$"); ax.set_ylabel(r"$\beta_2$")
+    ax.set_aspect("equal")
+
+fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+_draw_panel(axes[0], "ridge")
+_draw_panel(axes[1], "lasso")
+plt.tight_layout()
+plt.show()
+```
 
 ---
 
@@ -87,6 +239,32 @@ The $\ell_1$ penalty performs estimation and variable selection simultaneously: 
 
 The regularization path traces $\hat\beta(\lambda)$ as $\lambda$ varies from $\lambda_{\max}$ (where all coefficients are zero) to zero (where the LASSO approaches the OLS solution, when it exists). The path is piecewise linear in $\lambda$, a property exploited by the LARS algorithm ([Efron, Hastie, Johnstone, and Tibshirani, 2004](https://doi.org/10.1214/009053604000000067)) to compute the entire solution path efficiently. Variables enter the active set one at a time as $\lambda$ decreases, providing a natural ordering by importance.
 
+```{python}
+#| label: fig-lasso-path
+#| echo: false
+#| fig-cap: "LASSO coefficient path on the top 100 most-variable Golub genes. As $\\lambda$ decreases (left to right), variables enter the active set one at a time. At large $\\lambda$, all coefficients are zero; at small $\\lambda$, many coefficients are nonzero. The path is piecewise linear in $\\lambda$, a property the LARS algorithm exploits to compute the entire solution efficiently. The colored line shows the count of nonzero coefficients at each $\\lambda$."
+#| fig-height: 4
+lambdas_l = np.logspace(-3, 0, 50)
+lasso_coefs = np.zeros((len(lambdas_l), X_top.shape[1]))
+for k, lam in enumerate(lambdas_l):
+    lasso_coefs[k] = Lasso(alpha=lam, max_iter=20000).fit(X_top, y_top).coef_
+
+fig, ax = plt.subplots(figsize=(9, 4))
+for j in range(X_top.shape[1]):
+    ax.plot(lambdas_l, lasso_coefs[:, j], lw=0.7, alpha=0.65)
+ax.set_xscale("log")
+ax.set_xlabel(r"$\lambda$ (log scale)")
+ax.set_ylabel(r"Coefficient $\hat\beta_j(\lambda)$")
+ax.axhline(0, color="#888", lw=0.6)
+ax.set_title("LASSO path on top-100 Golub genes")
+ax2 = ax.twinx()
+ax2.plot(lambdas_l, (lasso_coefs != 0).sum(axis=1), color="#c0504d", lw=2,
+         label="active set size")
+ax2.set_ylabel("Number of nonzero coefficients", color="#c0504d")
+plt.tight_layout()
+plt.show()
+```
+
 ---
 
 ## Choosing $\lambda$ by cross-validation
@@ -94,6 +272,54 @@ The regularization path traces $\hat\beta(\lambda)$ as $\lambda$ varies from $\l
 The regularization strength $\lambda$ is chosen by $K$-fold cross-validation. The data are split into $K$ folds (typically $K = 10$). For each candidate value of $\lambda$, the model is fit on $K - 1$ folds and evaluated on the held-out fold; the cross-validation error is averaged across folds. The optimal $\lambda$ minimizes the CV error.
 
 Two specific choices recur in practice. The value $\lambda_{\min}$ minimizes the CV error and produces the model with the best out-of-sample prediction. The value $\lambda_{1\mathrm{se}}$ is the largest $\lambda$ within one standard error of the minimum; it produces a more parsimonious model with prediction error statistically indistinguishable from $\lambda_{\min}$. For interpretive applications — gene signatures meant to be reported in publications or assembled into clinical assays — $\lambda_{1\mathrm{se}}$ is generally preferable. A 12-gene signature is more interpretable, more likely to replicate, and more practical to deploy than a 45-gene one with comparable accuracy.
+
+```{python}
+#| label: fig-cv-curve
+#| echo: false
+#| fig-cap: "Five-fold cross-validation curve for LASSO logistic regression on the Golub data (top 200 most-variable genes). The solid blue line is the mean cross-validated deviance; the shaded band is $\\pm 1$ standard error across folds. Two operating points: $\\lambda_{\\min}$ (red dashed) is the value that minimizes mean CV deviance; $\\lambda_{1\\mathrm{se}}$ (orange dashed) is the largest $\\lambda$ within one SE of $\\lambda_{\\min}$ and yields a more parsimonious model with statistically indistinguishable error."
+#| fig-height: 3.8
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold
+top200 = np.argsort(g_var)[-200:]
+X200 = X_full_std[:, top200]
+lam_grid = np.logspace(-3, 0.5, 25)
+kf = KFold(n_splits=5, shuffle=True, random_state=2026)
+cv_dev = np.zeros((len(lam_grid), 5))
+for il, lam in enumerate(lam_grid):
+    for k, (tr, te) in enumerate(kf.split(X200)):
+        clf = LogisticRegression(
+            penalty="l1", C=1.0 / lam, solver="saga", max_iter=4000
+        ).fit(X200[tr], y_binary[tr])
+        # Binomial deviance on held-out fold
+        proba = np.clip(clf.predict_proba(X200[te])[:, 1], 1e-6, 1 - 1e-6)
+        dev = -2 * np.mean(
+            y_binary[te] * np.log(proba) + (1 - y_binary[te]) * np.log(1 - proba)
+        )
+        cv_dev[il, k] = dev
+mean_dev = cv_dev.mean(axis=1)
+se_dev = cv_dev.std(axis=1) / np.sqrt(5)
+i_min = int(np.argmin(mean_dev))
+lam_min = lam_grid[i_min]
+target = mean_dev[i_min] + se_dev[i_min]
+i_1se = max(i for i, m in enumerate(mean_dev) if m <= target and i >= i_min)
+lam_1se = lam_grid[i_1se]
+
+fig, ax = plt.subplots(figsize=(9, 3.8))
+ax.plot(lam_grid, mean_dev, "o-", color="#3b78cc", lw=2, label="Mean CV deviance")
+ax.fill_between(lam_grid, mean_dev - se_dev, mean_dev + se_dev,
+                color="#3b78cc", alpha=0.18)
+ax.axvline(lam_min, color="#c0504d", linestyle="--", lw=1.4,
+           label=fr"$\lambda_{{\min}} = {lam_min:.3g}$")
+ax.axvline(lam_1se, color="#e8923c", linestyle="--", lw=1.4,
+           label=fr"$\lambda_{{1\mathrm{{se}}}} = {lam_1se:.3g}$")
+ax.set_xscale("log")
+ax.set_xlabel(r"$\lambda$ (log scale)")
+ax.set_ylabel("CV binomial deviance")
+ax.set_title("5-fold CV: LASSO logistic on Golub (top 200 genes)")
+ax.legend(loc="upper left", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
 
 ---
 
@@ -106,6 +332,35 @@ The elastic net ([Zou and Hastie, 2005](https://doi.org/10.1111/j.1467-9868.2005
 $$\hat\beta_{\mathrm{enet}} = \arg\min_\beta \left\{ \frac{1}{2n}\|y - X\beta\|_2^2 + \lambda\!\left[\alpha\|\beta\|_1 + \frac{1-\alpha}{2}\|\beta\|_2^2\right] \right\}.$$
 
 The mixing parameter $\alpha \in [0,1]$ interpolates between ridge ($\alpha = 0$) and LASSO ($\alpha = 1$). When $\alpha$ is strictly between zero and one, the elastic net retains the variable-selection property of the LASSO while exhibiting the *grouping effect*: highly correlated predictors tend to be selected or omitted as a group.
+
+```{python}
+#| label: fig-three-penalties
+#| echo: false
+#| fig-cap: "Three regularization paths on the same data (top 100 Golub genes). **Left (ridge):** continuous shrinkage of all coefficients toward zero; none exactly zero. **Center (elastic net, $\\alpha = 0.5$):** mixes shrinkage and selection; correlated predictors tend to enter/leave as groups. **Right (LASSO):** stepwise selection as variables enter the active set at specific $\\lambda$ values; only a sparse subset is nonzero at any $\\lambda$."
+#| fig-height: 3.6
+lambdas_3 = np.logspace(-3, 1, 35)
+coefs_r = np.zeros((len(lambdas_3), X_top.shape[1]))
+coefs_e = np.zeros((len(lambdas_3), X_top.shape[1]))
+coefs_l = np.zeros((len(lambdas_3), X_top.shape[1]))
+for k, lam in enumerate(lambdas_3):
+    coefs_r[k] = Ridge(alpha=lam).fit(X_top, y_top).coef_
+    coefs_e[k] = ElasticNet(alpha=lam, l1_ratio=0.5, max_iter=20000).fit(X_top, y_top).coef_
+    coefs_l[k] = Lasso(alpha=lam, max_iter=20000).fit(X_top, y_top).coef_
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.6), sharey=True)
+for ax, coefs, title in [
+    (axes[0], coefs_r, r"Ridge ($\alpha = 0$)"),
+    (axes[1], coefs_e, r"Elastic net ($\alpha = 0.5$)"),
+    (axes[2], coefs_l, r"LASSO ($\alpha = 1$)"),
+]:
+    for j in range(X_top.shape[1]):
+        ax.plot(lambdas_3, coefs[:, j], lw=0.6, alpha=0.65)
+    ax.set_xscale("log"); ax.axhline(0, color="#888", lw=0.5)
+    ax.set_xlabel(r"$\lambda$"); ax.set_title(title)
+axes[0].set_ylabel(r"$\hat\beta_j$")
+plt.tight_layout()
+plt.show()
+```
 
 ---
 
@@ -137,6 +392,44 @@ The two cases used the same class of statistical methods on the same kind of hig
 
 The lesson is that regularization is a tool, not a guarantee. The method is only as reliable as the analysis pipeline that surrounds it, and the pipeline must include external validation, open code and data, and rigorous training/test separation.
 
+```{python}
+#| label: fig-mammaprint-duke
+#| echo: false
+#| fig-cap: "Two pipelines for gene-expression-based clinical prediction. **Top:** the MammaPrint pipeline — training on 78 patients, *external* validation across multiple independent cohorts, and the 6,693-patient MINDACT randomized prospective trial before clinical use. **Bottom:** the Duke metagene pipeline — training and reported validation on overlapping data, no comparable external trial, code and data not shared, errors flagged by external statisticians (Baggerly & Coombes) only after patient enrollment had begun. Same statistical method (penalized regression); different fate because of the validation pipeline."
+#| fig-height: 3.4
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+
+def _box(ax, xy, text, w=2.3, h=0.95, fc="#cfe2f3", ec="#2a4d9c"):
+    x, y = xy
+    p = FancyBboxPatch((x - w/2, y - h/2), w, h, boxstyle="round,pad=0.05",
+                       linewidth=1.4, facecolor=fc, edgecolor=ec)
+    ax.add_patch(p); ax.text(x, y, text, ha="center", va="center", fontsize=9.5)
+    return (x, y, w, h)
+
+def _arrow(ax, p_from, p_to):
+    x0, y0, w0, h0 = p_from; x1, y1, w1, h1 = p_to
+    ax.add_patch(FancyArrowPatch((x0 + w0/2, y0), (x1 - w1/2, y1),
+                                  arrowstyle="-|>", mutation_scale=12,
+                                  linewidth=1.1, color="#444"))
+
+fig, ax = plt.subplots(figsize=(11, 3.4))
+ax.set_xlim(0, 14); ax.set_ylim(0, 5); ax.axis("off")
+ax.text(0.4, 4.4, "MammaPrint", fontsize=11, fontweight="bold", color="#2a4d9c")
+A1 = _box(ax, (2.2, 3.8), "Train: 78 patients\n(van 't Veer 2002)")
+A2 = _box(ax, (5.5, 3.8), "External\nvalidation cohorts")
+A3 = _box(ax, (8.8, 3.8), "MINDACT trial\n6,693 patients", fc="#d6efd0", ec="#2a7d2a")
+A4 = _box(ax, (12.0, 3.8), "FDA clearance\nclinical use", w=2.3, fc="#d6efd0", ec="#2a7d2a")
+for pair in [(A1, A2), (A2, A3), (A3, A4)]: _arrow(ax, *pair)
+ax.text(0.4, 2.0, "Duke metagene", fontsize=11, fontweight="bold", color="#a3372f")
+B1 = _box(ax, (2.2, 1.4), "Train on cell lines\n(Potti, ~2006)")
+B2 = _box(ax, (5.5, 1.4), "Validation on\noverlapping data", fc="#f5dada", ec="#a3372f")
+B3 = _box(ax, (8.8, 1.4), "Patients enrolled\nin trials", fc="#f5dada", ec="#a3372f")
+B4 = _box(ax, (12.0, 1.4), "Retractions /\nlicense revoked", w=2.3, fc="#f5dada", ec="#a3372f")
+for pair in [(B1, B2), (B2, B3), (B3, B4)]: _arrow(ax, *pair)
+plt.tight_layout()
+plt.show()
+```
+
 ---
 
 ## A reproducibility caveat: LASSO selection instability
@@ -146,6 +439,40 @@ Even when the analysis pipeline is correct, LASSO selection has an inherent inst
 Bootstrap stability analysis is the standard remedy. The procedure resamples the dataset many times, refits the LASSO on each resample, and records the frequency with which each variable is selected. Variables that appear in the selected set in a high fraction of resamples (typically more than 50 percent) constitute the *stable* signature; variables that appear sporadically are unstable and should not be reported as confident discoveries. The elastic net mitigates the instability via its grouping property, but does not eliminate it.
 
 The interpretive lesson is that "the LASSO selected gene $X$" is a statement about a particular fit, not about the underlying biology. A defensible signature must survive resampling.
+
+```{python}
+#| label: fig-bootstrap-stability
+#| echo: false
+#| fig-cap: "Bootstrap-LASSO selection stability on the Golub data (top 100 most-variable genes). Each row is a bootstrap resample (with replacement); each column is a gene. A filled cell indicates that the gene was selected (nonzero coefficient) in that bootstrap fit. **Stable** genes — selected in a high fraction of bootstrap resamples — cluster on the right side of the plot; **unstable** genes — selected sporadically — are scattered. The bottom panel shows the fraction of bootstrap fits each gene appears in. A common reporting threshold is 50%."
+#| fig-height: 4.6
+n_boot, alpha_l = 30, 0.05
+selected = np.zeros((n_boot, X_top.shape[1]), dtype=int)
+for b in range(n_boot):
+    idx = rng.integers(0, n_samples_g, size=n_samples_g)
+    fit = Lasso(alpha=alpha_l, max_iter=20000).fit(X_top[idx], y_top[idx])
+    selected[b] = (fit.coef_ != 0).astype(int)
+sel_freq = selected.mean(axis=0)
+order = np.argsort(sel_freq)
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 4.6),
+                                gridspec_kw=dict(height_ratios=[2.4, 1]),
+                                sharex=True)
+ax1.imshow(selected[:, order], aspect="auto", cmap="Blues",
+           interpolation="nearest")
+ax1.set_ylabel("Bootstrap iteration")
+ax1.set_title(f"Bootstrap LASSO selection ({n_boot} resamples; top 100 Golub genes)")
+ax1.set_yticks([])
+ax2.bar(np.arange(X_top.shape[1]), sel_freq[order],
+        color="#3b78cc", edgecolor="white", width=1.0)
+ax2.axhline(0.5, color="#c0504d", linestyle="--", lw=1.2,
+            label="50% selection threshold")
+ax2.set_xlabel("Gene rank (least → most stable)")
+ax2.set_ylabel("Selection freq.")
+ax2.set_ylim(0, 1.05)
+ax2.legend(loc="upper left", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
 
 ---
 
@@ -178,5 +505,38 @@ The complete high-dimensional analysis toolkit, as developed across the workshop
 5. **AI as a tool.** Generative models accelerate routine analysis, but every statistical claim and biological interpretation requires verification.
 
 The thread that runs through all five components is that high-dimensional inference is a different inferential regime from the classical one — not merely a quantitatively harder version. Procedures that succeed in low dimensions fail in high dimensions, and vice versa. The methods of this workshop are not refinements of low-dimensional procedures; they are the procedures appropriate to the regime in which most modern biological data now sit.
+
+```{python}
+#| label: fig-bias-variance
+#| echo: false
+#| fig-cap: "Training and test mean squared error as a function of LASSO regularization strength $\\lambda$ on a synthetic regression problem ($n = 200, p = 100$, with 15 truly nonzero coefficients). Training MSE rises monotonically with $\\lambda$ — adding regularization makes the fit worse on the training data, by design. Test MSE is U-shaped: at small $\\lambda$ the model overfits; at large $\\lambda$ it underfits; in between lies the optimum, which cross-validation identifies."
+#| fig-height: 3.5
+n_obs2, p2, s_true = 200, 100, 15
+beta_true = np.zeros(p2); beta_true[:s_true] = rng.normal(scale=1.5, size=s_true)
+X_all = rng.normal(size=(n_obs2 * 2, p2))
+y_all = X_all @ beta_true + rng.normal(scale=1.0, size=n_obs2 * 2)
+Xtr, Xte = X_all[:n_obs2], X_all[n_obs2:]
+ytr, yte = y_all[:n_obs2], y_all[n_obs2:]
+lambdas_bv = np.logspace(-3, 1, 30)
+train_mse = []; test_mse = []
+for lam in lambdas_bv:
+    m = Lasso(alpha=lam, max_iter=20000).fit(Xtr, ytr)
+    train_mse.append(np.mean((m.predict(Xtr) - ytr) ** 2))
+    test_mse.append(np.mean((m.predict(Xte) - yte) ** 2))
+i_opt = int(np.argmin(test_mse))
+
+fig, ax = plt.subplots(figsize=(9, 3.5))
+ax.plot(lambdas_bv, train_mse, "o-", color="#3b78cc", lw=2, label="Training MSE")
+ax.plot(lambdas_bv, test_mse, "s-", color="#c0504d", lw=2, label="Test MSE")
+ax.axvline(lambdas_bv[i_opt], color="#2a7d2a", linestyle="--", lw=1.5,
+           label=fr"Test-optimal $\lambda = {lambdas_bv[i_opt]:.3g}$")
+ax.set_xscale("log")
+ax.set_xlabel(r"$\lambda$ (log scale)")
+ax.set_ylabel("MSE")
+ax.set_title("Bias–variance tradeoff: train MSE up, test MSE U-shaped")
+ax.legend(loc="upper left", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
 
 Lab 4 builds a sparse gene signature for the ALL-versus-AML distinction in the Golub dataset, using LASSO and elastic net with cross-validation and bootstrap stability analysis, and concludes by asking generative AI for a biological interpretation that the student then verifies against primary sources. The cycle — model, validate, interpret, verify — is the practical form of every claim made in this lecture.
