@@ -1,7 +1,7 @@
 ---
 title: "Lecture 3: Dimension Reduction"
-subtitle: "Finding Structure in High-Dimensional Data"
-date: "Day 2, 8:00–9:00"
+subtitle: "Estimating Low-Dimensional Structure"
+date: "2026-05-16"
 format:
   revealjs:
     theme: default
@@ -18,107 +18,182 @@ format:
     fig-pos: 'H'
 ---
 
-# The Eigenface That Launched a Thousand Papers {.centered}
+```{=html}
+<style>
+.reveal .slides { font-size: 0.78em; }
+.reveal h1 { font-size: 2.4em; }
+.reveal h2 { font-size: 1.5em; }
+.reveal table { font-size: 0.9em; }
+.reveal blockquote { font-size: 0.95em; }
+</style>
+```
+
+# From Faces to Genes: Estimating Low-Dimensional Structure {.centered}
 
 ---
 
-## From Faces to Genes
+## From eigenfaces to single-cell genomics
 
-In 1991, [Turk and Pentland](https://doi.org/10.1162/jocn.1991.3.1.71) applied PCA to a database of face photographs. The leading principal components — diffuse, low-resolution images they termed **"eigenfaces"** — sufficed to reconstruct any face in the database from approximately 100 coefficients in place of thousands of pixels.
+In 1991, [Turk and Pentland](https://doi.org/10.1162/jocn.1991.3.1.71) applied PCA to a database of face photographs. The leading principal components — diffuse, low-resolution images they termed **"eigenfaces"** — sufficed to reconstruct any face in the database from approximately 100 coefficients in place of thousands of pixels. The result moved dimension reduction from a mathematical construct to a practical tool for representing high-dimensional objects.
 
-. . .
+The same principle now drives single-cell genomics. With 30,000 transcript abundances per cell, the standard pipeline compresses each cell to 30–50 principal components before clustering, embedding, or downstream inference. What worked for faces works for cells, tissues, brain images, and protein structures.
 
-The result marked the transition of dimension reduction from a mathematical construct to a practical tool: a high-dimensional object (a face) could be faithfully represented in a far lower-dimensional space.
-
-. . .
-
-The same principle now drives single-cell genomics, where 30,000 gene measurements per cell are routinely compressed to 30–50 principal components before any further analysis.
+The unifying assumption: high-dimensional data often live near a low-dimensional manifold; the methods of this lecture identify that manifold and project the data onto it.
 
 ---
 
-## The Problem
+## The problem
 
-We have data $X \in \mathbb{R}^{n \times p}$ with $p$ large (thousands to tens of thousands).
+:::: {.columns}
+::: {.column width="50%"}
+**Setup.** Data $X \in \mathbb{R}^{n \times p}$ with $p$ large (thousands to tens of thousands).
 
-**Goals**:
+**Inferential goals**
 
-- **Visualization**: Project to 2D or 3D for exploration
-- **Denoising**: Separate signal from noise
-- **Preprocessing**: Reduce $p$ before applying downstream methods (clustering, regression)
+- **Visualization** — project to 2D or 3D for exploration.
+- **Denoising** — separate signal from noise.
+- **Preprocessing** — reduce $p$ before clustering or regression downstream.
+:::
+::: {.column width="50%"}
+**Core question.** Can we represent the data in $\mathbb{R}^k$ with $k \ll p$, preserving the important structure?
 
-. . .
-
-**Core question**: Can we represent the data in a lower-dimensional space $\mathbb{R}^k$ with $k \ll p$, preserving the important structure?
-
----
-
-## Principal Component Analysis (PCA)
-
-### The idea
-
-Find orthogonal directions of maximum variance in the data.
-
-### Formally
-
-Given centered data $X$ ($n \times p$), PCA solves:
-
-$$\mathbf{v}_1 = \arg\max_{\|\mathbf{v}\| = 1} \text{Var}(X\mathbf{v}) = \arg\max_{\|\mathbf{v}\| = 1} \mathbf{v}^T \hat{\Sigma} \mathbf{v}$$
-
-The solution $\mathbf{v}_1$ is the eigenvector of $\hat{\Sigma} = \frac{1}{n-1}X^TX$ with the largest eigenvalue.
+**Answer that survives the lecture.** PCA does it optimally for *linear* structure. t-SNE and UMAP expose nonlinear structure but distort distances. Use PCA first, nonlinear second, and treat the embedding as a sketch.
+:::
+::::
 
 ---
 
-## PCA via the SVD
+## Principal component analysis
 
-The **singular value decomposition** of $X$:
+:::: {.columns}
+::: {.column width="55%"}
+**The optimization.** For centered $X$ ($n \times p$),
 
-$$X = U D V^T$$
+$$\mathbf{v}_1 = \arg\max_{\|\mathbf{v}\| = 1} \mathbf{v}^\top \hat\Sigma\, \mathbf{v},\quad \hat\Sigma = \tfrac{1}{n-1}X^\top X.$$
 
-- $U$ ($n \times r$): left singular vectors (sample directions)
-- $D$ ($r \times r$): diagonal matrix of singular values $d_1 \geq d_2 \geq \cdots \geq 0$
-- $V$ ($p \times r$): right singular vectors (loadings = principal component directions)
+$\mathbf{v}_1$ is the leading eigenvector of $\hat\Sigma$. Subsequent components are the next-largest eigenvectors, all orthogonal to those already chosen.
 
-where $r = \min(n, p)$. Software returns this "thin" SVD by default.
+**SVD form.** $X = U D V^\top$. The eigenvalues of $\hat\Sigma$ are $\lambda_j = d_j^2/(n-1)$; the PC scores are $Z = XV = UD$; the loadings are the columns of $V$.
 
-. . .
+**Optimality.** [Eckart–Young (1936)](https://doi.org/10.1007/BF02288367): the rank-$k$ matrix minimizing the Frobenius reconstruction error is the rank-$k$ SVD truncation.
+:::
+::: {.column width="45%"}
+**Strengths**
 
-**Connection**: Eigenvalues of $\hat{\Sigma}$ are $\lambda_j = d_j^2 / (n-1)$.
+- Fast (standard linear algebra)
+- Interpretable loadings
+- Deterministic (up to sign)
+- Optimal for *linear* structure
 
-**PC scores**: $Z = XV = UD$ (the $j$-th column of $Z$ is the $j$-th principal component).
+**Limitations**
 
----
-
-## How Many Components?
-
-### Scree plot
-
-Plot $\lambda_j$ (or proportion of variance explained) vs. $j$. Look for an "elbow."
-
-### Proportion of variance explained
-
-$$\text{PVE}(k) = \frac{\sum_{j=1}^k \lambda_j}{\sum_{j=1}^p \lambda_j}$$
-
-### Formal methods
-
-- **Marchenko–Pastur threshold**: Under null ($\Sigma = I$) with $\gamma = p/n$, eigenvalues lie in $[\max(0,\,(1-\sqrt{\gamma})^2),\; (1+\sqrt{\gamma})^2]$. When $p > n$ (our regime), the lower edge is 0 and only the upper edge matters. Eigenvalues above $(1+\sqrt{\gamma})^2$ are signal.
-- **Parallel analysis**: Compare observed eigenvalues to those from permuted data.
+- Linear only — misses curved manifolds
+- Sensitive to feature scaling
+- $p \gg n$ inflates leading eigenvalues (Marchenko–Pastur bias)
+- Cannot recover signals below the BBP detection threshold
+:::
+::::
 
 ---
 
-## PCA: Strengths and Limitations
+## PCA on Golub: scree + PC1/PC2 scatter
 
-### Strengths
+```{python}
+#| label: fig-pca-scatter-slide
+#| echo: false
+#| fig-height: 4
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
-- Computationally fast; solved by standard linear algebra
-- Optimal for linear reconstruction (Eckart–Young theorem)
-- Interpretable loadings: which variables contribute to each PC?
+expr = pd.read_csv("../data/golub_expression.csv", index_col=0)
+meta = pd.read_csv("../data/golub_metadata.csv")
+labels = meta["subtype"].values
+all_mask = labels == "ALL"
+aml_mask = labels == "AML"
+X = expr.values.T
+X_std = StandardScaler().fit_transform(X)
+n_samples = X.shape[0]
+pca_full = PCA(n_components=min(n_samples, 50)).fit(X_std)
+golub_scores = pca_full.transform(X_std)
+golub_eigs = pca_full.explained_variance_
 
-### Limitations
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4))
+n_show = 20
+ev = golub_eigs[:n_show]
+ax1.bar(np.arange(1, n_show + 1), ev / golub_eigs.sum(), color="#3b78cc",
+        edgecolor="white", alpha=0.85)
+ax1.set_xlabel("Principal component")
+ax1.set_ylabel("Fraction of variance")
+ax1.set_title("Scree plot (top 20)")
+ax1_r = ax1.twinx()
+ax1_r.plot(np.arange(1, n_show + 1), np.cumsum(ev) / golub_eigs.sum(),
+           "o-", color="#c0504d")
+ax1_r.set_ylabel("Cumulative fraction", color="#c0504d")
+ax1_r.set_ylim(0, 1.05)
 
-- **Linear only**: Cannot capture nonlinear manifold structure
-- **Sensitive to scaling**: Must standardize or choose units carefully
-- **Rotation ambiguity**: PCs are identified only up to sign
-- **High-D noise bias**: In the $p \gg n$ regime, the Marchenko–Pastur law inflates eigenvalues. Leading PCs can be distorted.
+ax2.scatter(golub_scores[all_mask, 0], golub_scores[all_mask, 1],
+            s=70, color="#3b78cc", label=f"ALL (n={all_mask.sum()})",
+            edgecolor="white", linewidth=0.6)
+ax2.scatter(golub_scores[aml_mask, 0], golub_scores[aml_mask, 1],
+            s=70, color="#c0504d", label=f"AML (n={aml_mask.sum()})",
+            edgecolor="white", linewidth=0.6)
+ax2.set_xlabel(f"PC1 ({pca_full.explained_variance_ratio_[0]*100:.1f}% var)")
+ax2.set_ylabel(f"PC2 ({pca_full.explained_variance_ratio_[1]*100:.1f}% var)")
+ax2.set_title("PC1 vs PC2 — ALL/AML separate")
+ax2.legend(loc="upper right", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+
+ALL and AML separate cleanly along the first principal axis. The disease-subtype signal is the dominant source of variance.
+
+---
+
+## Choosing the number of components
+
+:::: {.columns}
+::: {.column width="50%"}
+**Scree plot.** Plot $\lambda_j$ versus $j$ and look for an elbow. Informal but often informative.
+
+**Proportion of variance explained.** $\mathrm{PVE}(k) = \sum_{j\le k}\lambda_j / \sum_j \lambda_j$. Common targets: 70–90 percent.
+
+**Marchenko–Pastur threshold.** Under independent-noise null with $\gamma = p/n$, the bulk lies in $[(1-\sqrt\gamma)^2, (1+\sqrt\gamma)^2]$. Eigenvalues above the upper edge are signal candidates.
+
+**Parallel analysis.** Permute each column independently, recompute the leading eigenvalue, repeat. Compare the observed eigenvalue to the permutation distribution.
+:::
+::: {.column width="50%"}
+```{python}
+#| label: fig-permnull-slide
+#| echo: false
+#| fig-height: 4
+rng = np.random.default_rng(2026)
+n_perm = 100
+n_genes_total = X.shape[1]
+perm_lead = np.zeros(n_perm)
+for b in range(n_perm):
+    Xp = X_std.copy()
+    for j in range(n_genes_total):
+        Xp[:, j] = rng.permutation(Xp[:, j])
+    s = np.linalg.svd(Xp, compute_uv=False)[:1]
+    perm_lead[b] = (s[0] ** 2) / (n_samples - 1)
+observed_lead = golub_eigs[0]
+fig, ax = plt.subplots(figsize=(5.5, 4))
+ax.hist(perm_lead, bins=22, color="#999", edgecolor="white", alpha=0.85,
+        label=f"Permuted leading eig\n(n={n_perm})")
+ax.axvline(observed_lead, color="#c0504d", lw=2, linestyle="--",
+           label=f"Observed = {observed_lead:.1f}")
+ax.set_xlabel("Leading eigenvalue")
+ax.set_ylabel("Count")
+ax.set_title("Parallel analysis on Golub")
+ax.legend(loc="upper center", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
 
 ---
 
@@ -168,18 +243,70 @@ Read it as: arrows pointing in the same direction as a cluster of points tell yo
 
 ---
 
-## When t-SNE Misleads
+## When t-SNE misleads
 
-In 2016, [Wattenberg, Viégas, and Johnson](https://distill.pub/2016/misread-tsne/) published *How to Use t-SNE Effectively*, an interactive article that documented several systematic failure modes:
+In 2016, [Wattenberg, Viégas, and Johnson](https://distill.pub/2016/misread-tsne/) published *How to Use t-SNE Effectively*, an interactive article documenting systematic failure modes:
 
-- t-SNE can produce **apparent clusters from uniformly distributed data**
-- It can **partition a single population** into two apparent clusters
-- It can render **distant groups visually adjacent**
-- Cluster **sizes** and **between-cluster distances** are not meaningful
+- t-SNE can produce **apparent clusters from uniformly distributed data**.
+- It can **partition a single population** into two apparent clusters.
+- It can render **distant groups visually adjacent**.
+- Cluster **sizes** and **between-cluster distances** are not preserved.
 
-. . .
+Despite this, t-SNE and UMAP plots are routinely treated in the literature as veridical representations of the data. A t-SNE plot is a sketch, not a photograph — useful for *exploration*, dangerous for *confirmation*. Quantitative claims about cluster identity, count, or trajectory require validation by other methods.
 
-Despite this, t-SNE and UMAP plots are routinely treated in the literature as veridical representations of the data. A t-SNE plot is a sketch, not a photograph.
+---
+
+## UMAP produces "clusters" from pure noise
+
+```{python}
+#| label: fig-umap-noise-slide
+#| echo: false
+#| warning: false
+#| fig-height: 4
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+expr = pd.read_csv("../data/golub_expression.csv", index_col=0)
+meta = pd.read_csv("../data/golub_metadata.csv")
+labels = meta["subtype"].values
+all_mask = labels == "ALL"
+aml_mask = labels == "AML"
+X_std = StandardScaler().fit_transform(expr.values.T)
+n_genes_total = X_std.shape[1]
+
+rng = np.random.default_rng(2026)
+try:
+    import umap
+    pca20 = PCA(n_components=20, random_state=0).fit_transform(X_std)
+    Xp = X_std.copy()
+    for j in range(n_genes_total):
+        Xp[:, j] = rng.permutation(Xp[:, j])
+    pca20n = PCA(n_components=20, random_state=0).fit_transform(Xp)
+    e_real = umap.UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20)
+    e_noise = umap.UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20n)
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    for ax, emb, title in [(axes[0], e_real, "Real Golub data"),
+                           (axes[1], e_noise, "Same matrix, columns permuted")]:
+        ax.scatter(emb[all_mask, 0], emb[all_mask, 1], s=55, color="#3b78cc",
+                   label="ALL", edgecolor="white", linewidth=0.5)
+        ax.scatter(emb[aml_mask, 0], emb[aml_mask, 1], s=55, color="#c0504d",
+                   label="AML", edgecolor="white", linewidth=0.5)
+        ax.set_title(title); ax.set_xticks([]); ax.set_yticks([])
+        ax.set_xlabel("UMAP1"); ax.set_ylabel("UMAP2")
+    axes[0].legend(loc="upper right", fontsize=9, frameon=False)
+    plt.tight_layout()
+    plt.show()
+except Exception:
+    fig, ax = plt.subplots(figsize=(8, 2.2))
+    ax.text(0.5, 0.5, "(umap-learn not installed at render time)",
+            ha="center", va="center", fontsize=11, color="#666")
+    ax.axis("off"); plt.tight_layout(); plt.show()
+```
+
+Both panels show "clusters." The right panel was produced from a matrix in which every gene's expression vector was independently permuted across samples, destroying any real structure. UMAP produced apparent clusters anyway.
 
 ---
 
@@ -209,26 +336,50 @@ The heavy-tailed $t$-distribution in low-D allows distant points to spread apart
 
 ---
 
-## t-SNE: Key Parameters
+## t-SNE: key parameters
 
-### Perplexity
+:::: {.columns}
+::: {.column width="45%"}
+**Perplexity**
 
-- Controls the effective number of neighbors
-- Typical range: 5–50
-- Low perplexity: fine local structure; high perplexity: more global structure
+- Effective number of neighbors in the affinity calculation.
+- Typical range: 5–50.
+- Low → fine local structure (and over-fragmentation).
+- High → more global structure (and over-merging).
 
-### Iterations
+**Iterations**
 
-- t-SNE uses gradient descent; needs enough iterations to converge (typically 500–1000)
+- Gradient descent needs ~500–1000 iterations to converge.
 
-. . .
+**Cautions**
 
-### Cautions
-
-- **Distances between clusters are not meaningful**
-- **Cluster sizes are not meaningful**
-- Results depend on random initialization—run multiple times
-- Does not preserve global structure well
+- Distances *between* clusters not meaningful.
+- Cluster *sizes* not meaningful.
+- Output depends on random initialization.
+:::
+::: {.column width="55%"}
+```{python}
+#| label: fig-tsne-perp-slide
+#| echo: false
+#| warning: false
+#| fig-height: 4.2
+from sklearn.manifold import TSNE
+pca20 = PCA(n_components=20, random_state=0).fit_transform(X_std)
+fig, axes = plt.subplots(3, 1, figsize=(5, 6))
+for ax, perp in zip(axes, [5, 30, 60]):
+    emb = TSNE(perplexity=perp, init="pca", learning_rate="auto",
+               random_state=2026).fit_transform(pca20)
+    ax.scatter(emb[all_mask, 0], emb[all_mask, 1], s=30, color="#3b78cc",
+               edgecolor="white", linewidth=0.3)
+    ax.scatter(emb[aml_mask, 0], emb[aml_mask, 1], s=30, color="#c0504d",
+               edgecolor="white", linewidth=0.3)
+    ax.set_title(f"perplexity = {perp}", fontsize=10)
+    ax.set_xticks([]); ax.set_yticks([])
+plt.tight_layout()
+plt.show()
+```
+:::
+::::
 
 ---
 
@@ -286,21 +437,88 @@ With $p = 10{,}000$ and $n = 100$ ($\gamma = 100$), the required signal strength
 
 ---
 
-## A Practical Workflow
+## The BBP threshold by simulation
 
-For high-dimensional biological data:
+```{python}
+#| label: fig-bbp-slide
+#| echo: false
+#| fig-height: 4
+p_bbp, n_bbp = 200, 100
+gamma_bbp = p_bbp / n_bbp
+thresh = 1 + np.sqrt(gamma_bbp)
+ells = np.linspace(0.0, 8.0, 20)
+n_rep = 20
+lead_eig = np.zeros((len(ells), n_rep))
+cos_sim = np.zeros((len(ells), n_rep))
+u_true = np.zeros(p_bbp); u_true[0] = 1.0
+for ie, ell in enumerate(ells):
+    for r in range(n_rep):
+        v_true = rng.normal(size=n_bbp); v_true /= np.linalg.norm(v_true)
+        Z = rng.normal(size=(p_bbp, n_bbp))
+        D = np.sqrt(ell) * np.outer(u_true, v_true) + Z
+        U_, S_, _ = np.linalg.svd(D, full_matrices=False)
+        lead_eig[ie, r] = (S_[0] ** 2) / n_bbp
+        cos_sim[ie, r] = np.abs(np.dot(U_[:, 0], u_true))
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.plot(ells, lead_eig.mean(1), "o-", color="#3b78cc", lw=2,
+        label="Leading sample eigenvalue")
+ax.fill_between(ells, lead_eig.mean(1) - lead_eig.std(1),
+                lead_eig.mean(1) + lead_eig.std(1), color="#3b78cc", alpha=0.18)
+ax.axvline(thresh, color="#c0504d", linestyle="--", lw=1.4,
+           label=fr"$\ell^* = 1 + \sqrt{{\gamma}} \approx {thresh:.2f}$")
+ax.axhline((1 + np.sqrt(gamma_bbp)) ** 2, color="#888", linestyle=":", lw=1,
+           label="Noise-bulk upper edge")
+ax.set_xlabel(r"Signal strength $\ell$")
+ax.set_ylabel("Sample leading eigenvalue")
+ax_r = ax.twinx()
+ax_r.plot(ells, cos_sim.mean(1), "s-", color="#e8923c", lw=1.5, markersize=5)
+ax_r.set_ylabel("|cos(sample top, true)|", color="#e8923c")
+ax_r.set_ylim(0, 1.05)
+ax.set_title(f"$p={p_bbp},\\ n={n_bbp},\\ \\gamma={gamma_bbp:.1f}$")
+ax.legend(loc="upper left", fontsize=9, frameon=False)
+plt.tight_layout()
+plt.show()
+```
 
-1. **Start with PCA** to get an overview, check for batch effects, choose number of informative dimensions
-2. **Apply t-SNE or UMAP** on the top $k$ PCs (not the raw $p$-dimensional data)
-3. **Never skip PCA**---it denoises and speeds up nonlinear methods
+**Below the threshold** the leading sample eigenvalue is indistinguishable from the noise bulk's upper edge, and the sample leading eigenvector has zero correlation with the true direction. PCA cannot find the signal — not because the procedure is bad, but because the geometry is.
 
-. . .
+---
 
-### Why PCA first?
+## A practical workflow
 
-- Removes noise dimensions that distort t-SNE and UMAP embeddings
-- Standard practice in single-cell pipelines (Seurat, Scanpy)
-- The [Johnson–Lindenstrauss](https://doi.org/10.1090/conm/026/737400) intuition: random projections approximately preserve distances, and PCA is strictly better than random in the relevant noise regime
+```{python}
+#| label: fig-workflow-slide
+#| echo: false
+#| fig-height: 2.3
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+
+def _box(ax, xy, text, w=2.3, h=0.9, fc="#cfe2f3", ec="#2a4d9c"):
+    x, y = xy
+    p = FancyBboxPatch((x - w/2, y - h/2), w, h, boxstyle="round,pad=0.05",
+                       linewidth=1.4, facecolor=fc, edgecolor=ec)
+    ax.add_patch(p); ax.text(x, y, text, ha="center", va="center", fontsize=10)
+    return (x, y, w, h)
+
+def _arrow(ax, p_from, p_to):
+    x0, y0, w0, h0 = p_from; x1, y1, w1, h1 = p_to
+    ax.add_patch(FancyArrowPatch((x0 + w0/2, y0), (x1 - w1/2, y1),
+                                  arrowstyle="-|>", mutation_scale=14,
+                                  linewidth=1.2, color="#444"))
+
+fig, ax = plt.subplots(figsize=(11, 2.3))
+ax.set_xlim(0, 14); ax.set_ylim(0, 3); ax.axis("off")
+A = _box(ax, (1.5, 1.5), "Raw expression\n$X \\in \\mathbb{R}^{n\\times p}$")
+B = _box(ax, (4.5, 1.5), "Standardize\n(center, scale)")
+C = _box(ax, (7.5, 1.5), "PCA to top $k$\n(scree / MP / PA)")
+D = _box(ax, (10.5, 1.5), "Nonlinear embed\n(t-SNE or UMAP)", fc="#fdebd0", ec="#a35313")
+E = _box(ax, (13.0, 1.5), "Exploration\nonly", w=2.0, fc="#f5dada", ec="#a3372f")
+for pair in [(A, B), (B, C), (C, D), (D, E)]:
+    _arrow(ax, *pair)
+plt.tight_layout()
+plt.show()
+```
+
+**Why PCA first?** Removes noise dimensions that distort t-SNE and UMAP embeddings; standard practice in single-cell pipelines (Seurat, Scanpy); the [Johnson–Lindenstrauss](https://doi.org/10.1090/conm/026/737400) intuition: random projections approximately preserve distances, and PCA is strictly better than random in the relevant noise regime.
 
 ---
 
