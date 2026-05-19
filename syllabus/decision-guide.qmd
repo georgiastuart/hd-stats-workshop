@@ -27,13 +27,13 @@ flowchart TD
     G -->|Yes| H["Efron local FDR"]
 ```
 
-| Situation | Method | Controls | R function |
-|-----------|--------|----------|------------|
-| Few tests, confirmatory | Bonferroni | FWER $\leq \alpha$ | `p.adjust(method="bonferroni")` |
-| Few tests, want more power | Holm | FWER $\leq \alpha$ | `p.adjust(method="holm")` |
-| Many tests, discovery | Benjamini–Hochberg | FDR $\leq \alpha$ | `p.adjust(method="BH")` |
-| Many tests, want $\hat{\pi}_0$ | Storey $q$-value | FDR $\leq \alpha$ (adaptive) | `qvalue::qvalue()` |
-| Thousands of tests, want per-test probability | Local FDR | $P(\text{null} \mid z)$ | `locfdr::locfdr()` |
+| Situation | Method | Controls | R function | Python equivalent |
+|---|---|---|---|---|
+| Few tests, confirmatory | Bonferroni | FWER $\leq \alpha$ | `p.adjust(method="bonferroni")` | `statsmodels.stats.multitest.multipletests(method="bonferroni")` |
+| Few tests, want more power | Holm | FWER $\leq \alpha$ | `p.adjust(method="holm")` | `statsmodels.stats.multitest.multipletests(method="holm")` |
+| Many tests, discovery | Benjamini–Hochberg | FDR $\leq \alpha$ | `p.adjust(method="BH")` | `statsmodels.stats.multitest.multipletests(method="fdr_bh")` |
+| Many tests, want $\hat{\pi}_0$ | Storey $q$-value | FDR $\leq \alpha$ (adaptive) | `qvalue::qvalue()` | — *(no canonical port; hand-rolled in Lab 2)* |
+| Thousands of tests, want per-test probability | Local FDR | $P(\text{null} \mid z)$ | `locfdr::locfdr()` | — *(no canonical port; hand-rolled in Lab 2)* |
 
 **Always check**: Does your $p$-value histogram look right? If the central peak of the $z$-score distribution is wider than $N(0,1)$, the theoretical null is wrong—use the empirical null.
 
@@ -100,11 +100,11 @@ flowchart TD
     C -->|"Yes (e.g., co-regulated genes)"| G["Elastic net (0 < α < 1)"]
 ```
 
-| Method | Penalty | Sparsity? | Use when |
-|--------|---------|-----------|----------|
-| Ridge | $\lambda\|\beta\|_2^2$ | No | Many small effects, want stable prediction |
-| LASSO | $\lambda\|\beta\|_1$ | Yes | Few large effects, want interpretable model |
-| Elastic net | $\lambda[\alpha\|\beta\|_1 + \frac{1-\alpha}{2}\|\beta\|_2^2]$ | Yes | Correlated predictors |
+| Method | Penalty | Sparsity? | Use when | R function | Python equivalent |
+|---|---|---|---|---|---|
+| Ridge | $\lambda\|\beta\|_2^2$ | No | Many small effects, want stable prediction | `glmnet(alpha=0)` | `sklearn.linear_model.RidgeCV` (or `LogisticRegressionCV(penalty='l2')`) |
+| LASSO | $\lambda\|\beta\|_1$ | Yes | Few large effects, want interpretable model | `glmnet(alpha=1)` | `sklearn.linear_model.LassoCV` (or `LogisticRegressionCV(penalty='l1', solver='saga')`) |
+| Elastic net | $\lambda[\alpha\|\beta\|_1 + \frac{1-\alpha}{2}\|\beta\|_2^2]$ | Yes | Correlated predictors | `glmnet(alpha=0.5)` | `sklearn.linear_model.ElasticNetCV` (or `LogisticRegressionCV(penalty='elasticnet', l1_ratios=...)`) |
 
 *Penalty parameterization follows `glmnet`; some textbooks use different scaling conventions.*
 
@@ -156,20 +156,21 @@ Whether the claim comes from a paper, a collaborator, or an AI:
 1. Look up genes on [GeneCards](https://www.genecards.org/) or [NCBI Gene](https://www.ncbi.nlm.nih.gov/gene/)
 2. Check cited papers on [PubMed](https://pubmed.ncbi.nlm.nih.gov/)—do they exist? Do they say what's claimed?
 3. Cross-reference with pathway databases: [KEGG](https://www.genome.jp/kegg/), [Gene Ontology](http://geneontology.org/)
-4. For gene set enrichment: use `clusterProfiler` (R) or [Enrichr](https://maayanlab.cloud/Enrichr/) (web)
+4. For gene set enrichment: use `gseapy` (Python), `clusterProfiler` (R), or [Enrichr](https://maayanlab.cloud/Enrichr/) (web)
 
 ---
 
 ## Quick Reference Card
 
-| I want to... | Use... | R package |
-|--------------|--------|-----------|
-| Test thousands of hypotheses | BH-FDR or $q$-values | `p.adjust()`, `qvalue` |
-| Test with per-gene posterior probability | Local FDR | `locfdr` |
-| Find DE genes (microarray) | Moderated $t$-test | `limma` |
-| Find DE genes (RNA-seq) | Negative binomial GLM | `DESeq2`, `edgeR` |
-| Reduce dimensions (linear) | PCA | `prcomp()` |
-| Reduce dimensions (nonlinear) | UMAP or t-SNE | `uwot`, `Rtsne` |
-| Predict with variable selection | LASSO or elastic net | `glmnet` |
-| Predict without variable selection | Ridge | `glmnet(alpha=0)` |
-| Check LASSO stability | Bootstrap resampling | manual loop + `glmnet` |
+| I want to... | Use... | R package | Python equivalent |
+|---|---|---|---|
+| Test thousands of hypotheses | BH-FDR or $q$-values | `p.adjust()`, `qvalue` | `statsmodels.stats.multitest.multipletests(method="fdr_bh")`; $q$-values: — *(hand-rolled in Lab 2)* |
+| Test with per-gene posterior probability | Local FDR | `locfdr` | — *(hand-rolled in Lab 2 with `scipy.stats.gaussian_kde` + `scipy.stats.norm`)* |
+| Find DE genes (microarray) | Moderated $t$-test | `limma` | — *(hand-rolled Smyth-style in Lab 2 / Homework; ~15 lines of numpy + scipy)* |
+| Find DE genes (RNA-seq) | Negative binomial GLM | `DESeq2`, `edgeR` | `pydeseq2` (port of `DESeq2`) |
+| Reduce dimensions (linear) | PCA | `prcomp()` | `sklearn.decomposition.PCA` |
+| Reduce dimensions (nonlinear) | UMAP or t-SNE | `uwot`, `Rtsne` | `umap-learn` (`from umap import UMAP`); `sklearn.manifold.TSNE` |
+| Predict with variable selection | LASSO or elastic net | `glmnet` | `sklearn.linear_model.LassoCV`, `ElasticNetCV` (or `LogisticRegressionCV` for classification) |
+| Predict without variable selection | Ridge | `glmnet(alpha=0)` | `sklearn.linear_model.RidgeCV` |
+| Check LASSO stability | Bootstrap resampling | manual loop + `glmnet` | manual loop + `sklearn.linear_model.LogisticRegression(penalty='l1')` |
+| Gene-set enrichment | `clusterProfiler` | — | `gseapy` |

@@ -35,12 +35,10 @@ By the end of this workshop, students will be able to:
 
 ## Workshop Plan
 
-| Session | Lecture → Lab | Learning Outcomes |
-|---------|-------------|-------------------|
-| **Day 1 AM** | Lecture 1: *The Gene That Wasn't There* (hypothesis testing) → Lab 1 | LO1, LO3 |
-| **Day 1 PM** | Lecture 2: *The Histogram That Was Too Wide* (estimation) → Lab 2 | LO1, LO3 |
-| **Day 2 AM** | Lecture 3: *The Map That Drew Itself* (dimension reduction) → Lab 3 | LO2, LO3 |
-| **Day 2 PM** | Lecture 4: *Seventy Genes and a Fraud* (penalized regression) → Lab 4 | LO2, LO3 |
+| Day | Sessions | Learning Outcomes |
+|---|---|---|
+| **Day 1 — Large-Scale Inference** | Lecture 1: *The Gene That Wasn't There* (hypothesis testing) → Lab 1 → Lecture 2: *The Histogram That Was Too Wide* (estimation) → Lab 2 | LO1, LO3 |
+| **Day 2 — Structure Discovery & Modern Tools** | Lecture 3: *The Map That Drew Itself* (dimension reduction) → Lab 3 → Lecture 4: *The Coefficients That Stayed Zero* (penalized regression) → Lab 4 | LO2, LO3 |
 | **Independent** | Pre-Homework, Homework | LO1, LO3 |
 
 ---
@@ -55,33 +53,32 @@ By the end of this workshop, students will be able to:
 
 ### Day 1: Large-Scale Inference
 
-| Time | Session | Topics | LOs |
-|------|---------|--------|-----|
-| 8:00--9:00 | Lecture 1 ([Essay](lectures/lecture1.qmd) · [Slides](lectures/lecture1-slides.qmd)) | *Hypothesis testing in high dimensions*: multiple-testing problem, $p$-value histogram diagnostic, Bonferroni / FWER, Benjamini–Hochberg, Storey's $q$-values | LO1 |
-| 9:00--10:00 | Lab 1 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab1.ipynb)) | Apply BH and $q$-values to the Golub leukemia data; compare to Bonferroni | LO1, LO3 |
-| 10:00--11:00 | Lecture 2 ([Essay](lectures/lecture2.qmd) · [Slides](lectures/lecture2-slides.qmd)) | *Estimation in high dimensions*: Stein's paradox + James–Stein shrinkage, empirical Bayes, two-groups model, local FDR, empirical null, `limma`'s `eBayes` | LO1 |
-| 11:00--12:00 | Lab 2 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab2.ipynb)) | Two-groups model and local FDR on Golub; empirical-null diagnostic | LO1, LO3 |
+| Session | Topics | LOs |
+|---|---|---|
+| Lecture 1 ([Essay](lectures/lecture1.qmd) · [Slides](lectures/lecture1-slides.qmd)) | *Hypothesis testing in high dimensions*: multiple-testing problem, $p$-value histogram diagnostic, Bonferroni / FWER, Benjamini–Hochberg, Storey's $q$-values | LO1 |
+| Lab 1 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab1.ipynb)) | Apply BH and $q$-values to the Golub leukemia data; compare to Bonferroni | LO1, LO3 |
+| Lecture 2 ([Essay](lectures/lecture2.qmd) · [Slides](lectures/lecture2-slides.qmd)) | *Estimation in high dimensions*: Stein's paradox + James–Stein shrinkage, empirical Bayes, two-groups model, local FDR, empirical null, `limma`'s `eBayes` | LO1 |
+| Lab 2 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab2.ipynb)) | Two-groups model and local FDR on Golub; empirical-null diagnostic | LO1, LO3 |
 
 **Homework assigned** --- [Homework](assessments/homework.qmd) (due start of Day 2)
 
 ### Day 2: Structure Discovery & Modern Tools
 
-| Time | Session | Topics | LOs |
-|------|---------|--------|-----|
-| 8:00--9:00 | Lecture 3 ([Essay](lectures/lecture3.qmd) · [Slides](lectures/lecture3-slides.qmd)) | *Estimating low-dimensional structure*: PCA + SVD, scree / Marchenko–Pastur / parallel analysis, BBP detection threshold, t-SNE and UMAP, why nonlinear embeddings mislead | LO2 |
-| 9:00--10:00 | Lab 3 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab3.ipynb)) | PCA, UMAP, and t-SNE on the Golub dataset; UMAP-on-noise diagnostic | LO2, LO3 |
-| 10:00--11:00 | Lecture 4 ([Essay](lectures/lecture4.qmd) · [Slides](lectures/lecture4-slides.qmd)) | *Sparse regression in $p \gg n$*: ridge / LASSO / elastic net, geometry of sparsity, cross-validation, MammaPrint vs. Duke metagene case studies | LO2, LO3 |
-| 11:00--12:00 | Lab 4 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab4.ipynb)) | LASSO + bootstrap stability + biological-interpretation verification | LO2, LO3 |
+| Session | Topics | LOs |
+|---|---|---|
+| Lecture 3 ([Essay](lectures/lecture3.qmd) · [Slides](lectures/lecture3-slides.qmd)) | *Estimating low-dimensional structure*: PCA + SVD, scree / Marchenko–Pastur / parallel analysis, BBP detection threshold, t-SNE and UMAP, why nonlinear embeddings mislead | LO2 |
+| Lab 3 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab3.ipynb)) | PCA, UMAP, and t-SNE on the Golub dataset; UMAP-on-noise diagnostic | LO2, LO3 |
+| Lecture 4 ([Essay](lectures/lecture4.qmd) · [Slides](lectures/lecture4-slides.qmd)) | *Sparse regression in $p \gg n$*: ridge / LASSO / elastic net, geometry of sparsity, cross-validation, MammaPrint vs. Duke metagene case studies | LO2, LO3 |
+| Lab 4 ([Colab](https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab4.ipynb)) | LASSO + bootstrap stability + biological-interpretation verification | LO2, LO3 |
 
 ---
 
 ## Software Requirements
 
-Students should have the following installed before Day 1:
+The workshop runs entirely in Python via Google Colab — **no local install is required, and R is not used in any student-facing material**. If you want to run things locally, you'll need:
 
-- **R** (≥ 4.3) with packages: `tidyverse`, `limma`, `qvalue`, `glmnet`, `ggplot2`, `pheatmap`, `Rtsne`, `uwot`
-- **Python** (≥ 3.10) with packages: `numpy`, `scipy`, `pandas`, `scikit-learn`, `statsmodels`, `matplotlib`, `seaborn`, `umap-learn`
-- **Quarto** (≥ 1.4) for rendering notebooks
+- **Python** (≥ 3.10) with `numpy`, `scipy`, `pandas`, `scikit-learn`, `statsmodels`, `matplotlib`, `seaborn`, `umap-learn`
+- **Quarto** (≥ 1.4) for rendering notebooks (optional — only needed if you want to build the site locally)
 - **University AI platform** (or Claude / ChatGPT) — used in every lab session
 
 ---
