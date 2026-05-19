@@ -51,7 +51,7 @@ hd-stats-workshop/
 │   ├── lecture2-slides.qmd # Reveal.js slide deck for Lecture 2
 │   ├── lecture3.qmd      # Essay: "The Map That Drew Itself" (HTML article + PDF)
 │   ├── lecture3-slides.qmd # Reveal.js slide deck for Lecture 3
-│   ├── lecture4.qmd      # Essay: "Seventy Genes and a Fraud" (HTML article + PDF)
+│   ├── lecture4.qmd      # Essay: "The Coefficients That Stayed Zero" (HTML article + PDF)
 │   └── lecture4-slides.qmd # Reveal.js slide deck for Lecture 4
 ├── assessments/
 │   ├── pre-homework.qmd  # HTML/PDF web reference for pre-workshop assignment
@@ -170,7 +170,7 @@ The following conventions were established by iterative review; preserve them ac
 - **Golub dataset**: 3,051 genes × 72 samples, ALL vs. AML leukemia.
   - Source: Golub et al. (1999), *Science*; archived on Zenodo (DOI: 10.5281/zenodo.8123245).
   - Local exports: `data/golub_expression.csv`, `data/golub_metadata.csv`.
-  - Loaded by labs from GitHub raw URLs: `https://raw.githubusercontent.com/pflahert/hd-stats-workshop/main/data/`.
+  - Loaded by labs from GitHub raw URLs: `https://raw.githubusercontent.com/pflahert/hd-stats-workshop/v2026-spring-data/data/`.
 - **ALL dataset**: 12,624 genes × 128 samples, B-cell vs. T-cell ALL.
   - Source: Bioconductor `ALL` package.
   - Local exports: `data/all_expression.csv`, `data/all_metadata.csv`.
