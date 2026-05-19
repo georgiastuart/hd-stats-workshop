@@ -34,7 +34,7 @@ website:
             href: lectures/lecture3-slides.qmd
           - text: "Lab 3: Dimension Reduction (Colab)"
             href: https://colab.research.google.com/github/pflahert/hd-stats-workshop/blob/main/notebooks/lab3.ipynb
-          - text: "Lecture 4: Seventy Genes and a Fraud"
+          - text: "Lecture 4: The Coefficients That Stayed Zero"
             href: lectures/lecture4.qmd
           - text: "Lecture 4 Slides"
             href: lectures/lecture4-slides.qmd

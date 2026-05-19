@@ -7,7 +7,6 @@ format:
     theme: default
     slide-number: true
     chalkboard: true
-    smaller: true
     scrollable: true
     code-fold: true
     footer: "High-Dimensional Data Analysis Workshop | BTP"
@@ -25,10 +24,15 @@ format:
 .reveal h2 { font-size: 1.5em; }
 .reveal table { font-size: 0.9em; }
 .reveal blockquote { font-size: 0.95em; }
+.reveal .centered, .reveal section.centered { text-align: center; }
 </style>
 ```
 
 # From Faces to Genes: Estimating Low-Dimensional Structure {.centered}
+
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+High-dimensional data often live near a low-dimensional manifold; the methods of this lecture find it.
+:::
 
 ---
 
@@ -67,9 +71,9 @@ The unifying assumption: high-dimensional data often live near a low-dimensional
 
 :::: {.columns}
 ::: {.column width="55%"}
-**The optimization.** For centered $X$ ($n \times p$),
+**The optimization.** Let $\tilde X$ be the column-centered (and, when features are on different scales, column-scaled) data matrix. Then
 
-$$\mathbf{v}_1 = \arg\max_{\|\mathbf{v}\| = 1} \mathbf{v}^\top \hat\Sigma\, \mathbf{v},\quad \hat\Sigma = \tfrac{1}{n-1}X^\top X.$$
+$$\mathbf{v}_1 = \arg\max_{\|\mathbf{v}\| = 1} \mathbf{v}^\top \hat\Sigma\, \mathbf{v},\quad \hat\Sigma = \tfrac{1}{n-1}\tilde X^\top \tilde X.$$
 
 $\mathbf{v}_1$ is the leading eigenvector of $\hat\Sigma$. Subsequent components are the next-largest eigenvectors, all orthogonal to those already chosen.
 
@@ -197,49 +201,63 @@ plt.show()
 
 ---
 
-## Biplots
+## Biplots: sample scores and gene loadings on one axes set
 
-A biplot overlays sample scores and variable loadings on the same 2D plot.
-
+:::: {.columns}
+::: {.column width="58%"}
 ```{python}
-#| echo: true
-#| fig-height: 5
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import load_iris
+#| label: fig-biplot-slide
+#| echo: false
+#| fig-height: 4.5
+gene_names = expr.index.values
+loadings = pca_full.components_.T   # genes x components
+loading_norm = np.sqrt(loadings[:, 0] ** 2 + loadings[:, 1] ** 2)
+top_genes = np.argsort(loading_norm)[-8:]
+score_extent = float(np.percentile(np.abs(golub_scores[:, :2]), 99))
+arrow_scale = score_extent / loading_norm[top_genes].max() * 0.85
 
-iris = load_iris()
-X_iris = StandardScaler().fit_transform(iris.data)
-pca_iris = PCA(n_components=2).fit(X_iris)
-scores = pca_iris.transform(X_iris)
-loadings = pca_iris.components_.T  # (4, 2)
-
-fig, ax = plt.subplots(figsize=(7, 5))
-ax.scatter(scores[:, 0], scores[:, 1], s=15, color="gray", alpha=0.6)
-scale = np.abs(scores).max() / np.abs(loadings).max() * 0.8
-for i, name in enumerate(iris.feature_names):
-    ax.arrow(0, 0, loadings[i, 0] * scale, loadings[i, 1] * scale,
-             color="red", head_width=0.1, linewidth=1.5)
-    ax.text(loadings[i, 0] * scale * 1.15, loadings[i, 1] * scale * 1.15,
-            name, color="red", fontsize=9, ha="center")
-ax.set_xlabel(f"PC1 ({pca_iris.explained_variance_ratio_[0]:.1%})")
-ax.set_ylabel(f"PC2 ({pca_iris.explained_variance_ratio_[1]:.1%})")
-ax.set_title("Biplot of Iris Data")
-ax.axhline(0, color="gray", linewidth=0.5)
-ax.axvline(0, color="gray", linewidth=0.5)
-plt.tight_layout()
-plt.show()
+fig, ax = plt.subplots(figsize=(7, 4.5))
+ax.scatter(golub_scores[all_mask, 0], golub_scores[all_mask, 1],
+           s=70, color="#3b78cc", label="ALL", edgecolor="white", linewidth=0.6)
+ax.scatter(golub_scores[aml_mask, 0], golub_scores[aml_mask, 1],
+           s=70, color="#c0504d", label="AML", edgecolor="white", linewidth=0.6)
+for g in top_genes:
+    lx, ly = loadings[g, 0] * arrow_scale, loadings[g, 1] * arrow_scale
+    ax.annotate("", xy=(lx, ly), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="->", color="#444", lw=1.3))
+    ax.text(lx * 1.1, ly * 1.1, str(gene_names[g])[:14],
+            fontsize=8.5, color="#222",
+            ha="left" if lx >= 0 else "right",
+            va="bottom" if ly >= 0 else "top")
+ax.axhline(0, color="#ddd", lw=0.6); ax.axvline(0, color="#ddd", lw=0.6)
+ax.set_xlabel(f"PC1 ({pca_full.explained_variance_ratio_[0]*100:.1f}% var)")
+ax.set_ylabel(f"PC2 ({pca_full.explained_variance_ratio_[1]*100:.1f}% var)")
+ax.set_title("Golub biplot: top genes by combined PC1+PC2 contribution")
+ax.legend(loc="upper right", frameon=False, fontsize=10)
+plt.tight_layout(); plt.show()
 ```
+:::
+::: {.column width="42%"}
+**How to read a biplot**
 
-. . .
+- **Dots** = sample scores in the PC1–PC2 plane.
+- **Arrows** = the top eight genes by combined PC1+PC2 contribution.
 
-Read it as: arrows pointing in the same direction as a cluster of points tell you which variables are high in that cluster.
+**Direction.** An arrow toward the AML cluster identifies a gene up-regulated in AML; an arrow toward ALL identifies a gene up-regulated in ALL.
+
+**Length.** Long arrow = strong contribution to PC1/PC2. Short arrow = the gene varies along a *different* latent axis.
+
+**Sample co-location.** A sample in the same quadrant as a gene's arrow has above-average expression of that gene; opposite quadrant ⇒ below average.
+:::
+::::
 
 ---
 
 # The Map Is Not the Territory {.centered}
+
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+Nonlinear embeddings — t-SNE, UMAP — reveal structure and, just as often, manufacture it.
+:::
 
 ---
 
@@ -279,14 +297,14 @@ n_genes_total = X_std.shape[1]
 
 rng = np.random.default_rng(2026)
 try:
-    import umap
+    from umap import UMAP
     pca20 = PCA(n_components=20, random_state=0).fit_transform(X_std)
     Xp = X_std.copy()
     for j in range(n_genes_total):
         Xp[:, j] = rng.permutation(Xp[:, j])
     pca20n = PCA(n_components=20, random_state=0).fit_transform(Xp)
-    e_real = umap.UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20)
-    e_noise = umap.UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20n)
+    e_real = UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20)
+    e_noise = UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20n)
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     for ax, emb, title in [(axes[0], e_real, "Real Golub data"),
                            (axes[1], e_noise, "Same matrix, columns permuted")]:
@@ -299,7 +317,7 @@ try:
     axes[0].legend(loc="upper right", fontsize=9, frameon=False)
     plt.tight_layout()
     plt.show()
-except Exception:
+except ImportError:
     fig, ax = plt.subplots(figsize=(8, 2.2))
     ax.text(0.5, 0.5, "(umap-learn not installed at render time)",
             ha="center", va="center", fontsize=11, color="#666")
@@ -395,7 +413,7 @@ Based on topological data analysis concepts. Constructs a fuzzy simplicial compl
 
 - Better preservation of global structure (relative cluster positions)
 - Faster (scales better to large $n$)
-- Theoretical grounding in Riemannian geometry and algebraic topology
+- McInnes et al. motivate UMAP from Riemannian geometry / algebraic topology, though subsequent work (Damrich & Hamprecht 2021) shows that the stated theory does not strictly determine UMAP's actual loss function — in practice UMAP behaves much like a faster t-SNE with a different attractive-repulsive balance
 
 ### Key parameters
 
@@ -410,7 +428,7 @@ Based on topological data analysis concepts. Constructs a fuzzy simplicial compl
 |---------|-----|-------|------|
 | Linear? | Yes | No | No |
 | Preserves global structure? | Yes | Poorly | Moderately |
-| Preserves local structure? | Somewhat | Very well | Very well |
+| Preserves local structure? | Sometimes (linear neighborhoods only) | Very well | Very well |
 | Scalability | Excellent | Slow for large $n$ | Fast |
 | Deterministic? | Yes | No | No |
 | Interpretable axes? | Yes (loadings) | No | No |
@@ -418,6 +436,10 @@ Based on topological data analysis concepts. Constructs a fuzzy simplicial compl
 ---
 
 # The Invisible Signal {.centered}
+
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+The Baik–Ben Arous–Péché transition: a signal too small to escape the noise bulk is undetectable in principle.
+:::
 
 ---
 
@@ -427,13 +449,13 @@ Based on topological data analysis concepts. Constructs a fuzzy simplicial compl
 
 . . .
 
-For a signal-plus-noise model with $p/n \to \gamma$, a signal eigenvalue $\ell$ is detectable only if
+For a signal-plus-noise model with $p/n \to \gamma$, a population spike of signal-to-noise ratio $\ell$ is detectable — the leading sample eigenvalue jumps above the MP upper edge $(1+\sqrt\gamma)^2$ — only if
 
-$$\ell > 1 + \sqrt{\gamma}.$$
+$$\ell > \sqrt{\gamma}.$$
 
 . . .
 
-With $p = 10{,}000$ and $n = 100$ ($\gamma = 100$), the required signal strength exceeds $11$. Below the threshold, signal eigenvalues are absorbed into the bulk noise spectrum and become irrecoverable from the leading components alone.
+With $p = 10{,}000$ and $n = 100$ ($\gamma = 100$), the required signal strength exceeds $\sqrt{100}=10$. Below the threshold, signal eigenvalues are absorbed into the bulk noise spectrum and become irrecoverable from the leading components alone.
 
 ---
 
@@ -445,7 +467,7 @@ With $p = 10{,}000$ and $n = 100$ ($\gamma = 100$), the required signal strength
 #| fig-height: 4
 p_bbp, n_bbp = 200, 100
 gamma_bbp = p_bbp / n_bbp
-thresh = 1 + np.sqrt(gamma_bbp)
+thresh = np.sqrt(gamma_bbp)
 ells = np.linspace(0.0, 8.0, 20)
 n_rep = 20
 lead_eig = np.zeros((len(ells), n_rep))
@@ -465,7 +487,7 @@ ax.plot(ells, lead_eig.mean(1), "o-", color="#3b78cc", lw=2,
 ax.fill_between(ells, lead_eig.mean(1) - lead_eig.std(1),
                 lead_eig.mean(1) + lead_eig.std(1), color="#3b78cc", alpha=0.18)
 ax.axvline(thresh, color="#c0504d", linestyle="--", lw=1.4,
-           label=fr"$\ell^* = 1 + \sqrt{{\gamma}} \approx {thresh:.2f}$")
+           label=fr"$\ell^* = \sqrt{{\gamma}} \approx {thresh:.2f}$")
 ax.axhline((1 + np.sqrt(gamma_bbp)) ** 2, color="#888", linestyle=":", lw=1,
            label="Noise-bulk upper edge")
 ax.set_xlabel(r"Signal strength $\ell$")
@@ -518,7 +540,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-**Why PCA first?** Removes noise dimensions that distort t-SNE and UMAP embeddings; standard practice in single-cell pipelines (Seurat, Scanpy); the [Johnson–Lindenstrauss](https://doi.org/10.1090/conm/026/737400) intuition: random projections approximately preserve distances, and PCA is strictly better than random in the relevant noise regime.
+**Why PCA first?** Removes noise dimensions that distort t-SNE and UMAP embeddings; standard practice in single-cell pipelines (Seurat, Scanpy). The trade-off: PCA also discards low-variance directions, which in single-cell genomics can correspond to rare cell types. Worth it for typical workflows; worth knowing about when rare-population discovery is the goal.
 
 ---
 
@@ -549,7 +571,7 @@ $$X = F L^T + E$$
 
 . . .
 
-When $E_{ij} \sim N(0, \sigma^2)$ (homoscedastic), PCA recovers the factors. When $E$ has heterogeneous variance, **probabilistic PCA** or **factor analysis** may be more appropriate.
+Under isotropic noise $E_{ij} \sim N(0, \sigma^2)$, PCA recovers the *column space* of the factors — the factors themselves are determined only up to rotation (the well-known rotation indeterminacy of factor analysis). **Probabilistic PCA** (Tipping & Bishop 1999) makes the same isotropic-noise assumption as PCA but in a likelihood framework; **factor analysis** allows a *diagonal* noise covariance, which can fit data with heterogeneous per-variable noise that PCA/pPCA cannot.
 
 In genomics, surrogate variable analysis (SVA) uses this framework to estimate hidden confounders.
 
@@ -563,12 +585,13 @@ In genomics, surrogate variable analysis (SVA) uses this framework to estimate h
 
 You run PCA on $p = 20{,}000$ genes measured on $n = 100$ samples. PC1 explains 15% of the variance.
 
-- If all $p$ variables were independent noise, each PC would explain about $1/\min(n,p) = 1/100 = 1\%$.
-- PC1 explains 15×  that. This is strong signal.
+**Discuss**: is 15% strong signal, weak signal, or undeterminable from the number alone?
 
 . . .
 
-**But**: in the $p \gg n$ regime, the Marchenko–Pastur law inflates eigenvalues---the leading eigenvalue of pure noise with $\gamma = p/n = 200$ can be as large as $(1 + \sqrt{200})^2 \approx 229$ on the covariance matrix scale. Not all of that 15% is necessarily signal---some is inflated by high-dimensional noise. The scree plot and parallel analysis help you decide.
+**Undeterminable** without checking against the noise floor. The naive intuition is that 15% is large because each PC would explain $\sim 1/\min(n,p) = 1\%$ under uniform variance — but the Marchenko–Pastur law shows that with $\gamma = p/n = 200$ even pure noise produces a leading eigenvalue up to $(1+\sqrt{200})^2 \approx 229$ on the covariance scale, which can easily account for a double-digit PVE.
+
+The diagnostic is parallel analysis: permute each gene's expression vector across samples to destroy any cross-gene structure, refit PCA, and compare the observed leading eigenvalue to the permutation distribution. If the observed eigenvalue is orders of magnitude above the permutation mean (as for Golub), it is real signal; if it falls within the permutation distribution, it is not.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "Lecture 4: Seventy Genes and a Fraud"
+title: "Lecture 4: The Coefficients That Stayed Zero"
 subtitle: "Estimating Sparse Regression Coefficients in $p \\gg n$"
 date: "2026-05-16"
 format:
@@ -49,7 +49,6 @@ plt.rcParams.update({
 # Load Golub for the LASSO / ridge / EN figures
 _expr = pd.read_csv("../data/golub_expression.csv", index_col=0)
 _meta = pd.read_csv("../data/golub_metadata.csv")
-gene_names = _expr.index.values
 X_full = _expr.values.T                       # 72 samples x 3,051 genes
 labels = _meta["subtype"].values
 y_binary = (labels == "AML").astype(int)      # 1 = AML, 0 = ALL
@@ -136,15 +135,15 @@ Ridge regression solves
 
 $$\hat\beta_{\mathrm{ridge}} = \arg\min_\beta \left\{ \frac{1}{2n}\|y - X\beta\|_2^2 + \frac{\lambda}{2}\|\beta\|_2^2 \right\}.$$
 
-The closed-form solution is $\hat\beta_{\mathrm{ridge}} = (X^\top X + n\lambda I)^{-1}X^\top y$. The penalty term renders the system invertible even when $p > n$: $X^\top X + n\lambda I$ is positive definite for any $\lambda > 0$.
+The closed-form solution is $\hat\beta_{\mathrm{ridge}} = (X^\top X + n\lambda I)^{-1}X^\top y$. The penalty term renders the system invertible even when $p > n$: $X^\top X + n\lambda I$ is positive definite for any $\lambda > 0$. When $p \gg n$ the primal form inverts a $p \times p$ matrix; the dual identity $\hat\beta_{\mathrm{ridge}} = X^\top(XX^\top + n\lambda I)^{-1}y$ inverts an $n \times n$ matrix instead and is the form actually used in high-dimensional implementations.
 
-Ridge has two distinguishing properties. It shrinks all coefficients toward zero, but none of them exactly to zero — every variable retains a (small) nonzero coefficient. And it admits an exact Bayesian interpretation: the ridge solution is the posterior mode under the prior $\beta_j \sim N(0, \tau^2)$, with $\lambda = \sigma^2/\tau^2$. Larger $\lambda$ corresponds to a tighter prior on small coefficients.
+Ridge has two distinguishing properties. It shrinks all coefficients toward zero, but none of them exactly to zero — every variable retains a (small) nonzero coefficient. And it admits an exact Bayesian interpretation: under the prior $\beta_j \sim N(0, \tau^2)$ and Gaussian likelihood, the ridge estimator is the posterior mode, with $\lambda = \sigma^2/(n\tau^2)$ given the $\frac{1}{2n}\|y-X\beta\|^2$ loss normalization adopted above. Larger $\lambda$ corresponds to a tighter prior on small coefficients.
 
-The bias–variance tradeoff is direct. As $\lambda$ increases, bias rises (coefficients shrink away from their unbiased OLS values) and variance falls (estimates become more stable across samples). The mean squared error of $\hat\beta_{\mathrm{ridge}}$ decomposes as
+The bias–variance tradeoff is direct. As $\lambda$ increases, bias rises (coefficients shrink away from their unbiased OLS values) and variance falls (estimates become more stable across samples). The parameter mean squared error decomposes as
 
-$$\mathrm{MSE}(\hat\beta_{\mathrm{ridge}}) = \mathrm{Bias}^2 + \mathrm{Variance},$$
+$$\mathrm{MSE}(\hat\beta_{\mathrm{ridge}}) = \|\mathbb{E}[\hat\beta_{\mathrm{ridge}}] - \beta\|_2^2 + \mathrm{tr}\,\mathrm{Var}(\hat\beta_{\mathrm{ridge}}) = \mathrm{Bias}^2 + \mathrm{Variance},$$
 
-and an optimal $\lambda$ minimizes the sum. Ridge is the appropriate tool when the underlying coefficient vector is dense — when many predictors have small effects rather than a few having large ones.
+and an optimal $\lambda$ minimizes the sum. (The prediction MSE on a new point adds the irreducible noise term $\sigma^2$ on top of this decomposition.) Ridge is the appropriate tool when the underlying coefficient vector is dense — when many predictors have small effects rather than a few having large ones.
 
 ```{python}
 #| label: fig-ridge-path
@@ -183,9 +182,9 @@ The defining feature of LASSO, in contrast to ridge, is that it produces solutio
 
 The constrained form of LASSO is $\min \|y - X\beta\|^2$ subject to $\|\beta\|_1 \leq t$. The constraint set $\{\beta : \|\beta\|_1 \leq t\}$ is a cross-polytope (a "diamond") in $\mathbb{R}^p$ whose vertices lie on the coordinate axes. The corresponding ridge constraint set is the Euclidean ball — smooth, with no distinguished points.
 
-The LASSO solution is the point of tangency between the level sets of the squared-error loss and the constraint set. The level sets are concentric ellipsoids centered at the OLS solution. As they expand outward, they generically first contact the diamond at a vertex — a point where one or more coordinates are exactly zero. They generically contact the ball at an arbitrary point on its surface, where all coordinates are typically nonzero. Sparsity is therefore not a tuning artifact of LASSO but a geometric consequence of the $\ell_1$ ball's shape.
+A LASSO solution is a point of tangency between the level sets of the squared-error loss and the constraint set. (When $p > n$, the solution is generally unique only if the design matrix is in "general position"; otherwise a set of equivalent minimizers can exist — see [Tibshirani, 2013](https://doi.org/10.1214/13-EJS815). The intuition below remains correct.) The level sets are concentric ellipsoids centered at the OLS solution. As they expand outward, they generically first contact the diamond at a vertex — a point where one or more coordinates are exactly zero. They generically contact the ball at an arbitrary point on its surface, where all coordinates are typically nonzero. Sparsity is therefore not a tuning artifact of LASSO but a geometric consequence of the $\ell_1$ ball's shape.
 
-In $p$ dimensions, the $\ell_1$ ball has $2p$ vertices, one on each signed axis. The probability of vertex contact grows with dimension, and so does the typical sparsity of the LASSO solution. This effect — sparsity emerging from high-dimensional geometry — is one of the reasons the method scales so well.
+In $p$ dimensions, the $\ell_1$ ball has $2p$ vertices — one on each signed axis — and a much larger number of edges and lower-dimensional faces on which one or more coordinates are zero. The number of these sparse faces grows combinatorially in $p$, which is the geometric reason LASSO solutions become sparser as the dimension increases.
 
 ```{python}
 #| label: fig-l1-l2-geometry
@@ -237,7 +236,7 @@ $$\hat\beta_{\mathrm{lasso}} = \arg\min_\beta \left\{ \frac{1}{2n}\|y - X\beta\|
 
 The $\ell_1$ penalty performs estimation and variable selection simultaneously: the optimization yields a coefficient vector with most entries set to zero, and the nonzero entries identify the variables retained in the model.
 
-The regularization path traces $\hat\beta(\lambda)$ as $\lambda$ varies from $\lambda_{\max}$ (where all coefficients are zero) to zero (where the LASSO approaches the OLS solution, when it exists). The path is piecewise linear in $\lambda$, a property exploited by the LARS algorithm ([Efron, Hastie, Johnstone, and Tibshirani, 2004](https://doi.org/10.1214/009053604000000067)) to compute the entire solution path efficiently. Variables enter the active set one at a time as $\lambda$ decreases, providing a natural ordering by importance.
+The regularization path traces $\hat\beta(\lambda)$ as $\lambda$ varies from $\lambda_{\max}$ (where all coefficients are zero) toward zero (where the LASSO approaches the OLS solution if it exists, and the minimum-$\ell_1$-norm interpolator otherwise). The path is piecewise linear in $\lambda$ under standard general-position assumptions on $X$; the LARS algorithm ([Efron, Hastie, Johnstone, and Tibshirani, 2004](https://doi.org/10.1214/009053604000000067)) exploits this structure to compute the entire solution path efficiently. As $\lambda$ decreases, variables enter the active set — and occasionally leave it again — providing an approximate ordering by importance. With highly correlated genomic features, ties at knots are common and the path can have additional kinks beyond the standard count.
 
 ```{python}
 #| label: fig-lasso-path
@@ -273,13 +272,13 @@ The regularization strength $\lambda$ is chosen by $K$-fold cross-validation. Th
 
 Two specific choices recur in practice. The value $\lambda_{\min}$ minimizes the CV error and produces the model with the best out-of-sample prediction. The value $\lambda_{1\mathrm{se}}$ is the largest $\lambda$ within one standard error of the minimum; it produces a more parsimonious model with prediction error statistically indistinguishable from $\lambda_{\min}$. For interpretive applications — gene signatures meant to be reported in publications or assembled into clinical assays — $\lambda_{1\mathrm{se}}$ is generally preferable. A 12-gene signature is more interpretable, more likely to replicate, and more practical to deploy than a 45-gene one with comparable accuracy.
 
+One pitfall is worth flagging now and repeating in Lab 4. The CV curve below uses the top 200 most-variable genes selected from the *entire* Golub matrix before the folds are constructed. This is convenient for an in-lecture illustration but is technically a form of information leakage: the variance ranking has already seen every sample's expression, including the held-out folds. The correct procedure — and the one Lab 4 implements — is to recompute the variance ranking inside each training fold so that the gene filter is part of the cross-validated pipeline. The figure below should therefore be read as an illustration of the *shape* of the CV deviance curve, not as a defensible estimate of out-of-sample performance.
+
 ```{python}
 #| label: fig-cv-curve
 #| echo: false
-#| fig-cap: "Five-fold cross-validation curve for LASSO logistic regression on the Golub data (top 200 most-variable genes). The solid blue line is the mean cross-validated deviance; the shaded band is $\\pm 1$ standard error across folds. Two operating points: $\\lambda_{\\min}$ (red dashed) is the value that minimizes mean CV deviance; $\\lambda_{1\\mathrm{se}}$ (orange dashed) is the largest $\\lambda$ within one SE of $\\lambda_{\\min}$ and yields a more parsimonious model with statistically indistinguishable error."
+#| fig-cap: "Five-fold cross-validation curve for LASSO logistic regression on the Golub data (top 200 most-variable genes, **selected on the full dataset before the folds are constructed — illustrative only; see the caveat in the text and the leakage-free procedure in Lab 4**). The solid blue line is the mean cross-validated deviance; the shaded band is $\\pm 1$ standard error across folds. Two operating points: $\\lambda_{\\min}$ (red dashed) is the value that minimizes mean CV deviance; $\\lambda_{1\\mathrm{se}}$ (orange dashed) is the largest $\\lambda$ within one SE of $\\lambda_{\\min}$ and yields a more parsimonious model with statistically indistinguishable error."
 #| fig-height: 3.8
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import KFold
 top200 = np.argsort(g_var)[-200:]
 X200 = X_full_std[:, top200]
 lam_grid = np.logspace(-3, 0.5, 25)
@@ -378,24 +377,24 @@ where $s$ is the number of true nonzero coefficients. This is near-optimal: the 
 
 ## Two case studies: validation determines outcome
 
-The same statistical methods, applied to the same kind of data for the same kind of question, can produce dramatically different outcomes. Two case studies make the point.
+The methods of this lecture sit inside an analysis pipeline that includes feature selection, model fitting, hyperparameter tuning, and validation. Two case studies — drawn from gene-expression-based clinical prediction in the same decade and the same disease area — illustrate how dramatically the *pipeline* matters, independent of the choice of statistical method.
 
-In 2002, [van 't Veer and colleagues](https://doi.org/10.1038/415530a) measured 25,000 genes on 78 breast-cancer patients and identified a 70-gene signature predicting metastasis. The signature was commercialized as MammaPrint, cleared by the United States Food and Drug Administration, and prospectively validated in the [MINDACT trial (Cardoso et al., 2016)](https://doi.org/10.1056/NEJMoa1602253). MINDACT randomized 6,693 patients with high clinical but low genomic risk to chemotherapy or no chemotherapy. The five-year distant-metastasis-free survival rate without chemotherapy was 94.7 percent. Approximately 46 percent of women who would have received chemotherapy on the basis of clinical risk alone were spared it on the basis of the genomic test.
+In 2002, [van 't Veer and colleagues](https://doi.org/10.1038/415530a) measured roughly 25,000 genes on 78 sporadic lymph-node-negative breast-cancer patients and identified a 70-gene signature predicting metastasis. The signature was derived not by LASSO or any penalized regression, but by univariate filtering — ranking genes by correlation with metastasis status and retaining a top set that was then classified by nearest-centroid scoring. The signature was commercialized as MammaPrint, cleared by the U.S. Food and Drug Administration in 2007 as the first in-vitro diagnostic multivariate index assay, and prospectively validated in the [MINDACT trial (Cardoso et al., 2016)](https://doi.org/10.1056/NEJMoa1602253). MINDACT randomized 6,693 patients with high clinical but low genomic risk to chemotherapy or no chemotherapy. The five-year distant-metastasis-free survival rate without chemotherapy was 94.7 percent. Approximately 46 percent of women who would have received chemotherapy on the basis of clinical risk alone were spared it on the basis of the genomic test.
 
-At Duke University, Anil Potti and colleagues used analogous gene-expression signatures to predict tumor response to specific chemotherapy drugs. Clinical trials enrolled patients on the basis of the signatures. Two statisticians at MD Anderson — Keith Baggerly and Kevin Coombes — spent several years attempting to reproduce the analyses ([Baggerly and Coombes, 2009](https://doi.org/10.1214/09-AOAS291)). They identified mislabeled samples, off-by-one errors in gene indices, and conclusions that were the inverse of what the data actually supported. The episode resulted in eighteen retracted papers and the revocation of Potti's medical license. Patients had been assigned to treatments on the basis of erroneous models.
+At Duke University, the oncologist Anil Potti and colleagues used gene-expression signatures (in their formulation, "metagenes" built from regression on cell-line drug-response data) to predict tumor response to specific chemotherapy drugs. Clinical trials enrolled patients on the basis of those signatures. Two statisticians at MD Anderson — Keith Baggerly and Kevin Coombes — spent several years attempting to reproduce the analyses ([Baggerly and Coombes, 2009](https://doi.org/10.1214/09-AOAS291)). They identified mislabeled samples, off-by-one errors in gene indices, and conclusions that were the inverse of what the data actually supported. The episode produced more than a dozen retractions and corrections across multiple journals (the running tally is maintained by [Retraction Watch](https://retractionwatch.com/the-rise-and-fall-of-anil-potti/)), the closure of three NCI-sponsored trials, and the eventual surrender of Potti's North Carolina medical license in 2015. Patients had been assigned to treatments on the basis of erroneous models.
 
-The two cases used the same class of statistical methods on the same kind of high-dimensional biological data for the same kind of clinical question. They produced opposite outcomes. The differences had nothing to do with the choice of penalty or the cross-validation scheme. They concerned the analysis pipeline:
+The two cases used high-dimensional gene-expression data to answer high-stakes clinical questions in the same decade, in the same disease area. They produced opposite outcomes. The differences had nothing to do with the specific feature-selection or regression method chosen — neither MammaPrint nor the Duke metagenes was derived by LASSO. They concerned the analysis pipeline:
 
 - **Validation.** MammaPrint was tested in a 6,693-patient prospective randomized trial. The Duke signatures were not subjected to comparable external validation.
 - **Reproducibility.** The Duke analysis could not be reproduced because code and data were not openly shared. The MammaPrint signature was independently replicated.
 - **Information leakage.** The Duke pipeline allowed information from the test set to influence training. The MammaPrint pipeline maintained strict separation.
 
-The lesson is that regularization is a tool, not a guarantee. The method is only as reliable as the analysis pipeline that surrounds it, and the pipeline must include external validation, open code and data, and rigorous training/test separation.
+The lesson is that the choice of regularizer matters far less than the analysis pipeline that surrounds it. A correctly applied LASSO inside a leaky pipeline produces an unreliable signature; a clinically deployable signature requires external validation, open code and data, and rigorous training/test separation regardless of which method generated it.
 
 ```{python}
 #| label: fig-mammaprint-duke
 #| echo: false
-#| fig-cap: "Two pipelines for gene-expression-based clinical prediction. **Top:** the MammaPrint pipeline — training on 78 patients, *external* validation across multiple independent cohorts, and the 6,693-patient MINDACT randomized prospective trial before clinical use. **Bottom:** the Duke metagene pipeline — training and reported validation on overlapping data, no comparable external trial, code and data not shared, errors flagged by external statisticians (Baggerly & Coombes) only after patient enrollment had begun. Same statistical method (penalized regression); different fate because of the validation pipeline."
+#| fig-cap: "Two pipelines for gene-expression-based clinical prediction. **Top:** the MammaPrint pipeline — training on 78 patients via univariate filtering plus nearest-centroid classification, *external* validation across multiple independent cohorts, and the 6,693-patient MINDACT randomized prospective trial before clinical use. **Bottom:** the Duke metagene pipeline — cell-line-derived signatures, validation on overlapping data, no comparable external trial, code and data not shared, errors flagged by external statisticians (Baggerly & Coombes) only after patient enrollment had begun. Different statistical methods, but the pipeline contrast — not the method choice — determines the fate of each."
 #| fig-height: 3.4
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
@@ -443,7 +442,7 @@ The interpretive lesson is that "the LASSO selected gene $X$" is a statement abo
 ```{python}
 #| label: fig-bootstrap-stability
 #| echo: false
-#| fig-cap: "Bootstrap-LASSO selection stability on the Golub data (top 100 most-variable genes). Each row is a bootstrap resample (with replacement); each column is a gene. A filled cell indicates that the gene was selected (nonzero coefficient) in that bootstrap fit. **Stable** genes — selected in a high fraction of bootstrap resamples — cluster on the right side of the plot; **unstable** genes — selected sporadically — are scattered. The bottom panel shows the fraction of bootstrap fits each gene appears in. A common reporting threshold is 50%."
+#| fig-cap: "Bootstrap-LASSO selection stability on the Golub data (top 100 most-variable genes, again selected on the full matrix — illustrative; Lab 4 repeats the selection inside each bootstrap to avoid leakage). LASSO penalty fixed at $\\lambda = 0.05$, a value that yields a sparse signature on this scale. Each row is a bootstrap resample (with replacement); each column is a gene. A filled cell indicates that the gene was selected (nonzero coefficient) in that bootstrap fit. **Stable** genes — selected in a high fraction of bootstrap resamples — cluster on the right side of the plot; **unstable** genes — selected sporadically — are scattered. The bottom panel shows the fraction of bootstrap fits each gene appears in. A common reporting threshold is 50%."
 #| fig-height: 4.6
 n_boot, alpha_l = 30, 0.05
 selected = np.zeros((n_boot, X_top.shape[1]), dtype=int)
@@ -500,7 +499,7 @@ The complete high-dimensional analysis toolkit, as developed across the workshop
 
 1. **Multiple testing and FDR.** When testing thousands of hypotheses, the false discovery rate is the right inferential target, and Benjamini–Hochberg or Storey's $q$-values provide the operational tools.
 2. **Empirical Bayes.** When $m$ is large, the aggregate of tests carries information about each individual one; the two-groups model formalizes this idea, and the local FDR is the most informative per-test summary.
-3. **Dimension reduction.** PCA is the optimal linear method, and is the appropriate first step. Nonlinear methods (t-SNE, UMAP) reveal additional structure but distort distances and cluster sizes; they are tools for exploration.
+3. **Dimension reduction.** PCA is the optimal linear method in the sense of variance captured (and equivalently, Frobenius reconstruction error) under centering and standardization, and is the appropriate first step. Nonlinear methods (t-SNE, UMAP) reveal additional structure but distort distances and cluster sizes; they are tools for exploration.
 4. **Penalized regression.** Ridge, LASSO, and elastic net handle the $p > n$ regression problem through regularization. The choice of penalty depends on the structure of the signal: dense (ridge), sparse (LASSO), or sparse with correlated predictors (elastic net).
 5. **AI as a tool.** Generative models accelerate routine analysis, but every statistical claim and biological interpretation requires verification.
 

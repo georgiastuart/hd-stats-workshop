@@ -1,5 +1,5 @@
 ---
-title: "Lecture 4: Penalized Regression & Modern AI Tools"
+title: "Lecture 4: The Coefficients That Stayed Zero"
 subtitle: "Estimating Sparse Regression Coefficients in $p \\gg n$"
 date: "2026-05-16"
 format:
@@ -28,7 +28,7 @@ format:
 </style>
 ```
 
-# When OLS Breaks: Sparse Regression in $p \gg n$ {.centered}
+# Regularization for regression in $p \gg n$ {.centered}
 
 ---
 
@@ -121,7 +121,7 @@ $$\hat{\beta}_{\text{ridge}} = \arg\min_\beta \left\{ \frac{1}{2n}\|y - X\beta\|
 
 - Shrinks all coefficients toward zero (but none exactly to zero)
 - The penalty term makes the system invertible even when $p > n$
-- Equivalent to a Bayesian posterior with $\beta_j \sim N(0, \tau^2)$ prior, where $\lambda = \sigma^2/\tau^2$
+- Posterior mode under $\beta_j \sim N(0, \tau^2)$ with Gaussian likelihood; given the $\frac{1}{2n}\|y-X\beta\|^2$ loss above, $\lambda = \sigma^2 / (n \tau^2)$
 
 ---
 
@@ -134,15 +134,17 @@ As $\lambda$ increases:
 
 . . .
 
-There exists an optimal $\lambda$ that minimizes prediction error. The mean squared error:
+An optimal $\lambda$ minimizes the parameter MSE:
 
 $$\text{MSE}(\hat{\beta}_{\text{ridge}}) = \text{Bias}^2 + \text{Variance}$$
+
+(Prediction MSE on a new point adds the irreducible $\sigma^2$ on top of this.)
 
 Ridge is optimal when **many predictors have small effects** (no true sparsity).
 
 ---
 
-# The Diamond vs. the Sphere {.centered}
+# Sparsity from the geometry of the $\ell_1$ ball {.centered}
 
 ---
 
@@ -156,11 +158,11 @@ The mechanism is the geometry of the constraint set: the $\ell_1$ ball has corne
 
 . . .
 
-As the level sets of the squared-error loss expand outward from the OLS solution, they generally first contact the $\ell_1$ ball at a vertex, at which one or more coordinates are exactly zero. The smooth $\ell_2$ ball has no such distinguished points.
+As the level sets of the squared-error loss expand outward from the OLS solution, they generically first contact the $\ell_1$ ball at a vertex (or on a lower-dimensional face), at which one or more coordinates are exactly zero. The smooth $\ell_2$ ball has no such distinguished points.
 
 . . .
 
-In $p$ dimensions, the $\ell_1$ ball has $2p$ vertices — one per signed axis — and the probability of contact at a vertex grows with dimension.
+In $p$ dimensions, the $\ell_1$ ball has $2p$ vertices — one per signed axis — and a combinatorially larger number of edges and lower-dimensional faces on which coordinates vanish. The number of these sparse faces grows quickly in $p$, which is the geometric reason LASSO solutions become sparser as the dimension increases. (When the design is not in general position, the LASSO solution can be non-unique; see [Tibshirani 2013](https://doi.org/10.1214/13-EJS815).)
 
 ---
 
@@ -182,6 +184,8 @@ LASSO simultaneously performs **estimation** and **variable selection**.
 
 ## Geometry: why $\ell_1$ gives sparsity
 
+:::: {.columns}
+::: {.column width="58%"}
 ```{python}
 #| label: fig-l1-l2-slide
 #| echo: false
@@ -215,44 +219,66 @@ fig, axes = plt.subplots(1, 2, figsize=(11, 4))
 _draw(axes[0], "ridge"); _draw(axes[1], "lasso")
 plt.tight_layout(); plt.show()
 ```
+:::
+::: {.column width="42%"}
+**How to read the figure**
 
-The $\ell_1$ ball has $2p$ vertices on the coordinate axes. The level-set ellipsoid of the squared-error loss generically first hits the diamond *at a vertex* — where one or more coordinates are zero. Sparsity is a geometric consequence of the diamond's corners, not a tuning trick.
+- Black dot: OLS estimate $(\hat\beta_1^{\mathrm{OLS}}, \hat\beta_2^{\mathrm{OLS}})$.
+- Gray ellipses: level sets of the squared-error loss expanding outward from OLS.
+- Colored shape: the constraint set $\{\beta : \|\beta\|_q \le t\}$.
+- Red dot: the constrained minimizer — the smallest loss attainable inside the constraint.
+
+**Takeaway.** The constrained minimum is where a loss ellipse first touches the constraint. Smooth ball $\Rightarrow$ generic tangent; both coordinates nonzero. Diamond $\Rightarrow$ first contact is generically a vertex (or sparse face); one or more coordinates exactly zero. Sparsity is geometry, not a tuning trick.
+:::
+::::
 
 ---
 
-## LASSO: Solution Path
+## LASSO: solution path
 
-As $\lambda$ decreases from $\lambda_{\max}$ (where $\hat{\beta} = 0$) to 0:
-
-- Coefficients enter the model one at a time
-- The **regularization path** $\hat{\beta}(\lambda)$ is piecewise linear ([Efron et al., 2004, LARS](https://doi.org/10.1214/009053604000000067))
-- Can compute the entire path efficiently
-
+:::: {.columns}
+::: {.column width="58%"}
 ```{python}
+#| label: fig-lasso-path-slide
 #| echo: false
 #| fig-height: 4
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import lasso_path
 
-rng = np.random.default_rng(1)
-n, p = 100, 200
-X_sim = rng.normal(size=(n, p))
-beta_true = np.concatenate([np.full(5, 3.0), np.full(5, -2.0), np.zeros(p - 10)])
-y_sim = X_sim @ beta_true + rng.normal(size=n)
+_expr_lp = pd.read_csv("../data/golub_expression.csv", index_col=0)
+_meta_lp = pd.read_csv("../data/golub_metadata.csv")
+_X_lp = StandardScaler().fit_transform(_expr_lp.values.T)
+_y_lp = (_meta_lp["subtype"].values == "AML").astype(float)
+_g_var_lp = _X_lp.var(axis=0)
+_X_top_lp = _X_lp[:, np.argsort(_g_var_lp)[-100:]]
 
-alphas, coefs, _ = lasso_path(X_sim, y_sim, n_alphas=100)
+alphas, coefs, _ = lasso_path(_X_top_lp, _y_lp, n_alphas=60)
 
 fig, ax = plt.subplots(figsize=(7, 4))
-for i in range(min(p, 20)):  # plot first 20 features for clarity
-    ax.semilogx(alphas, coefs[i], linewidth=0.8)
-ax.set_xlabel("λ (regularization strength)")
-ax.set_ylabel("Coefficient value")
-ax.set_title("LASSO Path")
+for j in range(_X_top_lp.shape[1]):
+    ax.semilogx(alphas, coefs[j], lw=0.7, alpha=0.7)
+ax.set_xlabel(r"$\lambda$ (log scale)")
+ax.set_ylabel(r"$\hat\beta_j(\lambda)$")
+ax.set_title("LASSO path: top 100 Golub genes")
+ax.axhline(0, color="#888", lw=0.5)
 ax.invert_xaxis()
 plt.tight_layout()
 plt.show()
 ```
+:::
+::: {.column width="42%"}
+**How to read the path**
+
+- Each line: one gene's coefficient $\hat\beta_j(\lambda)$.
+- Horizontal axis: $\lambda$ on a log scale, $\lambda_{\max}$ on the right, $\lambda \to 0$ on the left.
+- At right: all coefficients are zero. At left: many are nonzero.
+
+**Takeaway.** As $\lambda$ decreases, variables enter the active set — and occasionally leave it again — at knots where the path bends. The path is piecewise linear in $\lambda$ under general-position assumptions ([Efron et al., 2004 — LARS](https://doi.org/10.1214/009053604000000067)); with highly correlated genomic features, additional kinks appear because ties at knots are common.
+:::
+::::
 
 ---
 
@@ -376,23 +402,23 @@ where $s$ = number of true nonzero coefficients. This is **near-optimal**---you 
 
 ---
 
-## MammaPrint: Regularization in Clinical Practice
+## MammaPrint: a signature that held up under validation
 
-In 2002, [van 't Veer and colleagues](https://doi.org/10.1038/415530a) measured 25,000 genes on 78 breast-cancer patients and identified a **70-gene signature** predicting metastasis through a supervised feature-selection procedure.
-
-. . .
-
-The signature was commercialized as **MammaPrint**, cleared by the U.S. Food and Drug Administration, and prospectively validated in the **MINDACT trial** ([Cardoso et al., 2016, *NEJM*](https://doi.org/10.1056/NEJMoa1602253)): 6,693 patients with high clinical but low genomic risk were randomized to chemotherapy or no chemotherapy.
+In 2002, [van 't Veer and colleagues](https://doi.org/10.1038/415530a) measured roughly 25,000 genes on 78 sporadic lymph-node-negative breast-cancer patients and identified a **70-gene signature** predicting metastasis. **The signature was not derived by LASSO or any penalized regression** — it came from univariate ranking by correlation with metastasis status, retained at a threshold, classified by nearest centroid.
 
 . . .
 
-**Result**: a 94.7 percent five-year distant-metastasis-free survival rate without chemotherapy. **Approximately 46 percent of women who would otherwise have received chemotherapy were spared it** — on the basis of a model built on 25,000 variables and 78 patients.
+The signature was commercialized as **MammaPrint**, cleared by the U.S. Food and Drug Administration in 2007 as the first in-vitro diagnostic multivariate index assay, and prospectively validated in the **MINDACT trial** ([Cardoso et al., 2016, *NEJM*](https://doi.org/10.1056/NEJMoa1602253)): 6,693 patients with high clinical but low genomic risk were randomized to chemotherapy or no chemotherapy.
+
+. . .
+
+**Result**: a 94.7 percent five-year distant-metastasis-free survival rate without chemotherapy. **Approximately 46 percent of women who would otherwise have received chemotherapy were spared it** — on the basis of a model built on 25,000 variables and 78 patients, *because the pipeline that surrounded it included external validation cohorts and a prospective randomized trial*.
 
 ---
 
-## The Duke Episode: When the Same Method Fails
+## The Duke episode: same setting, opposite outcome
 
-At Duke University, Anil Potti and colleagues used gene-expression signatures to predict tumor response to specific chemotherapy agents. Clinical trials enrolled patients on the basis of those signatures.
+At Duke University, the oncologist **Anil Potti** and colleagues used gene-expression "metagenes" — built from regression on cell-line drug-response data — to predict tumor response to specific chemotherapy agents. Clinical trials enrolled patients on the basis of those signatures.
 
 . . .
 
@@ -400,12 +426,14 @@ Statisticians at MD Anderson — Keith Baggerly and Kevin Coombes — spent seve
 
 . . .
 
-The episode resulted in **eighteen retracted papers** and the revocation of Potti's medical license. Patients had been assigned to treatments on the basis of erroneous models.
+The episode produced **more than a dozen retractions and corrections** across multiple journals (a running tally is maintained by [Retraction Watch](https://retractionwatch.com/the-rise-and-fall-of-anil-potti/)), the closure of three NCI-sponsored clinical trials, and the **surrender of Potti's North Carolina medical license in 2015**. Patients had been assigned to treatments on the basis of erroneous models.
 
 ---
 
-## The same method, different outcomes
+## Two pipelines, two fates
 
+:::: {.columns}
+::: {.column width="62%"}
 ```{python}
 #| label: fig-mammaprint-duke-slide
 #| echo: false
@@ -441,8 +469,18 @@ for pair in [(B1, B2), (B2, B3), (B3, B4)]: _arrow(ax, *pair)
 plt.tight_layout()
 plt.show()
 ```
+:::
+::: {.column width="38%"}
+**How to read the diagram**
 
-Same class of statistical methods on the same kind of data for the same kind of clinical question. Different fate because of the *validation pipeline*: MammaPrint had external validation and a 6,693-patient prospective trial; the Duke metagene work did not. **Regularization is a tool, not a guarantee.** A model is only as reliable as the pipeline that surrounds it.
+Two pipelines, both producing gene-expression signatures, both used to inform clinical decisions in the same decade.
+
+- **Top (green):** train → external validation cohorts → prospective randomized trial → clearance.
+- **Bottom (red):** train (cell lines, not patients) → "validation" on overlapping data → patients already enrolled before the pipeline was independently scrutinized.
+
+**Takeaway.** Neither MammaPrint nor the Duke metagenes was built by LASSO or ridge; the methods differed in detail. The fate of each was determined by the *pipeline* — external validation, open code and data, training/test separation — not the regularizer.
+:::
+::::
 
 ---
 
@@ -452,6 +490,8 @@ When predictors are correlated — as gene-expression measurements typically are
 
 The implication: **bootstrap stability analysis** is necessary to determine which variables are *consistently* selected, as opposed to selected in any one fit. Elastic net mitigates the instability via the grouping property but does not eliminate it.
 
+:::: {.columns}
+::: {.column width="60%"}
 ```{python}
 #| label: fig-bootstrap-slide
 #| echo: false
@@ -487,8 +527,16 @@ a2.legend(loc="upper left", fontsize=9, frameon=False)
 plt.tight_layout()
 plt.show()
 ```
+:::
+::: {.column width="40%"}
+**How to read the figure**
 
-Stable genes accumulate on the right of the plot; unstable ones are scattered. A defensible signature must survive bootstrap resampling.
+- **Top heatmap:** rows are bootstrap resamples; columns are genes (ordered by selection frequency). Filled = gene chosen.
+- **Bottom bar chart:** fraction of resamples in which each gene was selected. The red dashed line is the 50% reporting threshold.
+
+**Takeaway.** Stable genes accumulate on the right; unstable ones are scattered. The right-hand bars are the candidates for a defensible signature. *Caveat:* this illustration selects the top-100 most-variable genes on the full matrix; Lab 4 repeats the selection inside each bootstrap to avoid leakage.
+:::
+::::
 
 ---
 
@@ -525,23 +573,11 @@ After identifying a gene set, you might ask an AI to describe their functions. A
 
 ---
 
-## Other Modern Approaches (Brief Survey)
+## When do classical methods still win?
 
-### Deep learning for high-D biology
+For the workshop's typical regime — $n$ in the tens to low hundreds, $p$ in the thousands — penalized regression and empirical-Bayes methods generally perform comparably to or better than deep-learning alternatives, while being substantially more interpretable and easier to validate. The advantages of nonlinear methods (autoencoders, transformer models, large pre-trained encoders) emerge primarily when sample sizes are large (thousands of cells or patients), when relationships are clearly nonlinear, or when transfer learning from a relevant pre-trained model is available.
 
-- **Autoencoders**: Nonlinear dimension reduction; used in single-cell analysis (e.g., scVI)
-- **Variational autoencoders (VAEs)**: Probabilistic; learn latent representations
-- **Transformers**: Protein structure prediction (AlphaFold), gene expression modeling (Geneformer)
-
-. . .
-
-### When do these beat classical methods?
-
-- Very large $n$ (thousands of samples/cells)
-- Complex nonlinear relationships
-- Transfer learning from pre-trained models
-
-For $n \leq$ a few hundred (typical in many BTP settings), penalized regression and empirical Bayes methods often perform comparably or better, and are much more interpretable.
+The Day 2 recommendation: start with penalized regression and PCA, and only escalate to more complex methods if there is a specific reason to expect the additional complexity to pay off.
 
 ---
 
@@ -582,7 +618,7 @@ Ridge regression minimizes $\frac{1}{2n}\|y - X\beta\|_2^2 + \frac{\lambda}{2}\|
 
 . . .
 
-- $\lambda \to 0$: Ridge approaches OLS (minimum-norm solution when $p > n$). Maximum variance, minimum bias.
+- $\lambda \to 0$: Ridge approaches the OLS solution when $p < n$; when $p > n$, the limit is the **minimum-$\ell_2$-norm interpolator** (not OLS — OLS does not exist). Variance is maximal, bias is minimal.
 - $\lambda \to \infty$: All coefficients shrink to zero. Zero variance, maximum bias. The model predicts the mean $\bar{y}$ for every observation.
 
 ---

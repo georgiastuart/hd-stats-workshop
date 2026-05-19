@@ -7,7 +7,6 @@ format:
     theme: default
     slide-number: true
     chalkboard: true
-    smaller: true
     scrollable: true
     code-fold: true
     footer: "High-Dimensional Data Analysis Workshop | BTP"
@@ -77,11 +76,13 @@ The Day-2 lectures continue the estimation story — dimension reduction (Lectur
 
 Suppose one observes $y_1, \ldots, y_d$ with $y_i \sim N(\theta_i, 1)$ and wishes to estimate the vector $\boldsymbol\theta = (\theta_1, \ldots, \theta_d)$ under squared-error loss.
 
-The natural estimator is $\hat\theta_i = y_i$. [Stein (1956)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Third-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Inadmissibility-of-the-Usual-Estimator-for-the-Mean-of-a/bsmsp/1200501656) proved that, for $d \geq 3$, this estimator is **inadmissible**: there exists another estimator with strictly smaller risk *for every* $\boldsymbol\theta$.
+The natural estimator is $\hat\theta_i = y_i$. [Stein (1956)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Third-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Inadmissibility-of-the-Usual-Estimator-for-the-Mean-of-a/bsmsp/1200501656) proved that, for $d \geq 3$, this estimator is **inadmissible**: there exists another estimator with risk no larger for every $\boldsymbol\theta$ and strictly smaller for at least one.
 
-The [James–Stein estimator (1961)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Fourth-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Estimation-with-Quadratic-Loss/bsmsp/1200512173) realizes the improvement by shrinking each coordinate toward the grand mean:
+The [James–Stein estimator (1961)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Fourth-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Estimation-with-Quadratic-Loss/bsmsp/1200512173) realizes the improvement explicitly. Shrinking each coordinate toward the *grand mean* of the observations gives
 
-$$\hat\theta_i^{\mathrm{JS}} = \bar y + \left(1 - \frac{(d-3)\sigma^2}{\sum_j (y_j - \bar y)^2}\right)(y_i - \bar y).$$
+$$\hat\theta_i^{\mathrm{JS}} = \bar y + \left(1 - \frac{(d-3)\sigma^2}{\sum_j (y_j - \bar y)^2}\right)(y_i - \bar y), \qquad d \geq 4.$$
+
+Shrinking instead toward a *fixed* target (say zero) uses $(d-2)$ in the numerator and dominates the MLE for $d \geq 3$ — one fewer degree of freedom is consumed because $\bar y$ does not need to be estimated. The risk-curve slide below uses the shrink-to-zero form to draw the cleanest cartoon of the dominance result.
 
 The shrinkage factor is *data-dependent*: when the $y_i$ are tightly clustered, more shrinkage; when they are spread out, less. The dependence on the other coordinates is what produces the risk improvement — and is structurally identical to what empirical Bayes will exploit.
 
@@ -100,7 +101,7 @@ The Stein result was deeply counterintuitive in 1956. Each $y_i$ is the maximum-
 import numpy as np
 import matplotlib.pyplot as plt
 
-sim_rng = np.random.default_rng(42)
+sim_rng = np.random.default_rng(2026)
 d, sigma = 20, 1.0
 theta = sim_rng.normal(0, 1, size=d)
 y = theta + sim_rng.normal(0, sigma, size=d)
@@ -152,7 +153,7 @@ The MLE row spreads widely around $\bar y$; the JS row is tight. Every arrow poi
 #| label: fig-baseball-slide
 #| echo: false
 #| fig-height: 4.2
-sim_rng2 = np.random.default_rng(1970)
+sim_rng2 = np.random.default_rng(2026)
 n_players, at_bats = 18, 45
 theta_b = np.clip(sim_rng2.normal(0.265, 0.030, size=n_players), 0.15, 0.40)
 y_b = sim_rng2.binomial(at_bats, theta_b) / at_bats
@@ -228,7 +229,7 @@ Stein's paradox is *not* a refutation of the MLE. JS dominates MLE under **one s
 |---|---|
 | Joint: $L = \sum_i (\hat\theta_i - \theta_i)^2$ | **James–Stein** (shrunken) |
 | Coordinatewise: $L_i = (\hat\theta_i - \theta_i)^2$ for each $i$ | **MLE** (unbiased) |
-| Predictive: $L_* = (\hat y_* - y_*)^2$ for $\hat y_* = \mathbf{x}_*^\top\hat{\boldsymbol\beta}$ | **Regularized** (ridge, LASSO, …) |
+| Predictive: $L_* = (\hat y_* - y_*)^2$ for $\hat y_* = \mathbf{x}_*^\top\hat{\boldsymbol\beta}$ | **Regularized** (ridge, LASSO, …) — *previews Lecture 4* |
 
 - **One gene reported, validated independently:** MLE is the right tool.
 - **A gene list scored against a downstream aggregate:** JS-style shrinkage is the right tool.
@@ -248,7 +249,7 @@ Land the decision-theoretic frame: choose a loss → choose a framework → deri
 #| label: fig-risk-curve-slide
 #| echo: false
 #| fig-height: 4
-sim_rng5 = np.random.default_rng(3)
+sim_rng5 = np.random.default_rng(2026)
 d_risk, sigma2 = 30, 1.0
 sizes = np.logspace(-1, 2, 12)
 n_reps = 400
@@ -280,6 +281,18 @@ plt.show()
 
 Under joint loss, **JS beats MLE everywhere**. The improvement is largest when $\|\boldsymbol\theta\|$ is small (the prior at zero is approximately correct) and narrows but never disappears as $\|\boldsymbol\theta\|$ grows. The MLE risk is flat at the sampling variance $\sigma^2$; JS borrows information from the population to do better.
 
+---
+
+# The Two-Groups Model {.centered}
+
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+A finite mixture that subsumes BH and Storey and produces the local FDR as a corollary.
+:::
+
+---
+
+## Efron's two-groups model
+
 Developed in [Efron (2004)](https://doi.org/10.1198/016214504000000089), [Efron (2008)](https://doi.org/10.1214/07-STS236), and [*Large-Scale Inference*](https://doi.org/10.1017/CBO9780511761362), Ch. 2–4. The framework formalizes the empirical-Bayes program as a finite mixture.
 
 Each of the $m$ tests belongs to one of two latent groups:
@@ -307,8 +320,9 @@ f1 = norm.pdf(xs, 2.5, 1.2)
 fmix = pi0 * f0 + (1 - pi0) * f1
 
 fig, ax = plt.subplots(figsize=(9, 3.5))
-ax.fill_between(xs, pi0 * f0, color="#9ecae1", alpha=0.6, label=r"$\pi_0\, f_0(z)$ (nulls)")
-ax.fill_between(xs, pi0 * f0, fmix, color="#fdae6b", alpha=0.7,
+ax.fill_between(xs, 0, pi0 * f0, color="#9ecae1", alpha=0.6,
+                label=r"$\pi_0\, f_0(z)$ (nulls)")
+ax.fill_between(xs, 0, (1 - pi0) * f1, color="#fdae6b", alpha=0.7,
                 label=r"$(1-\pi_0)\, f_1(z)$ (alternatives)")
 ax.plot(xs, fmix, color="black", linewidth=1.5, label=r"Observed mixture $f(z)$")
 ax.set_xlabel("$z$"); ax.set_ylabel("density")
@@ -359,7 +373,7 @@ The tail-area FDR is the average of the local FDR over the rejection region. Two
 #| label: fig-fdr-curve-slide
 #| echo: false
 #| fig-height: 4
-sim_rng3 = np.random.default_rng(7)
+sim_rng3 = np.random.default_rng(2026)
 m_sim, pi0_sim = 5000, 0.85
 m1 = int(round(m_sim * (1 - pi0_sim)))
 xs = np.linspace(-4.5, 6.5, 600)
@@ -479,7 +493,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-Storey's estimator gives $\hat\pi_0 \approx 0.6$: roughly 60% of genes are null, 40% carry signal. ALL and AML differ substantially.
+Storey's estimator gives $\hat\pi_0 \approx 0.6$: roughly 60% of genes are null, 40% carry signal. ALL and AML differ substantially. *(The estimate depends on the tuning parameter $\lambda$; the `qvalue` package fits $\hat\pi_0(\lambda)$ as a smooth function and reads off its limit as $\lambda \to 1$ to remove the sensitivity.)*
 
 ---
 
@@ -628,7 +642,7 @@ Efron observed that in many real datasets, the central peak of the $z$-score his
 #| fig-height: 4
 from scipy.stats import norm
 
-rng = np.random.default_rng(123)
+rng = np.random.default_rng(2026)
 m, m1 = 5000, 200
 z_null = rng.normal(loc=0.2, scale=1.3, size=m - m1)  # empirical null ≠ N(0,1)
 z_alt = rng.normal(loc=3, scale=1, size=m1)
@@ -662,9 +676,9 @@ plt.show()
 
 ### Step by step (Efron, *Large-Scale Inference*, Ch. 4–5)
 
-1. Convert test statistics to $z$-scores: $z_i = \Phi^{-1}(1 - p_i)$ or use the statistic directly
-2. Estimate $f(z)$ using Poisson regression on binned counts (Lindsey's method)
-3. Estimate $\pi_0$ and $f_0$ (theoretical or empirical null)
+1. Convert test statistics to (two-sided, signed) $z$-scores: $z_i = \mathrm{sign}(t_i)\cdot \Phi^{-1}(1 - p_i/2)$, or use the test statistic directly if it is already $N(0,1)$ under the null.
+2. Estimate $f(z)$ using Poisson regression on binned counts (Lindsey's method) or a kernel density estimate.
+3. Estimate $\pi_0$ and $f_0$ (theoretical $N(0,1)$ or, when the central peak is too wide, the empirical null $N(\hat\delta_0, \hat\sigma_0^2)$).
 4. Compute $\widehat{\text{fdr}}(z) = \hat{\pi}_0 \hat{f}_0(z) / \hat{f}(z)$.
 
 The R package `locfdr` automates the entire pipeline. In Python the most common approach is to call `locfdr` via `rpy2`, or to compute the steps manually with `scipy` and `statsmodels`.
@@ -687,7 +701,7 @@ The R package `locfdr` automates the entire pipeline. In Python the most common 
 
 **Practical decision framework** (echoed on the next slide)
 
-- 1–20 tests: FWER (Bonferroni / Holm).
+- Few tests (<100): FWER (Bonferroni / Holm).
 - Many tests, confirmatory goal: still FWER.
 - 100–1,000 tests for discovery: Benjamini–Hochberg or Storey's $q$-values.
 - 1,000+ tests for discovery: Efron's two-groups model and local FDR.
@@ -740,7 +754,7 @@ E = box(ax, (10.5, 3), "How many tests?", kind="decision")
 F = box(ax, (8.5, 1), "BH or Storey\nq-values")
 G = box(ax, (11.5, 1), "Efron local FDR /\nempirical Bayes")
 
-arrow(ax, A, B, "Few: 1–20")
+arrow(ax, A, B, "Few: <100")
 arrow(ax, A, C, "Many: 100+")
 arrow(ax, C, D, "Confirmation")
 arrow(ax, C, E, "Discovery")

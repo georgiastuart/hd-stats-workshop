@@ -121,8 +121,10 @@ try:
              fontsize=10, va="center")
 
     plt.show()
-except Exception:
-    # Fallback: synthetic illustration if Olivetti is unavailable at render time
+except (OSError, ConnectionError, TimeoutError, ImportError):
+    # Fallback: synthetic 2-D illustration of the same low-rank-plus-noise idea
+    # if Olivetti cannot be fetched at render time. This shows progressively
+    # better SVD reconstruction of a single image — NOT eigenfaces themselves.
     gx, gy = np.meshgrid(np.linspace(-1, 1, 64), np.linspace(-1, 1, 64))
     img = (np.exp(-((gx + 0.3) ** 2 + (gy - 0.2) ** 2) / 0.15)
            + 0.7 * np.exp(-((gx - 0.4) ** 2 + (gy + 0.3) ** 2) / 0.20)
@@ -135,11 +137,13 @@ except Exception:
         approx = (U_img[:, :k_c] * S_img[:k_c]) @ Vt_img[:k_c]
         ax.imshow(approx, cmap="gray"); ax.axis("off")
         ax.set_title(f"$k={k_c}$")
+    fig.suptitle("Olivetti unavailable — synthetic SVD reconstruction shown instead "
+                 "(illustrative only; not actual eigenfaces)", fontsize=9, color="#666")
     plt.tight_layout()
     plt.show()
 ```
 
-The lecture covers three topics. The first is principal component analysis, including its formal definition, the relationship to the singular value decomposition, and the random-matrix complications that arise in the $p \gg n$ regime. The second is the two principal nonlinear methods for dimension reduction — t-SNE and UMAP — and the systematic ways in which they mislead. The third is a practical workflow that combines the linear and nonlinear methods to obtain useful representations without obvious artifacts.
+The lecture is built around three threads. The first is principal component analysis: its formal definition, the relationship to the singular value decomposition, and the random-matrix complications (Marchenko–Pastur, the BBP detection threshold, parallel analysis) that arise in the $p \gg n$ regime. The second is the two principal nonlinear methods for dimension reduction — t-SNE and UMAP — and the systematic ways in which they mislead, including a recurring historical instance (the wave-like "PC maps" Cavalli-Sforza read as migration, that Novembre and Stephens showed were mathematical artifacts). The third is a practical workflow and diagnostic protocol that combines the linear and nonlinear methods to obtain useful representations without obvious artifacts.
 
 ---
 
@@ -147,9 +151,9 @@ The lecture covers three topics. The first is principal component analysis, incl
 
 The goal is to represent data $X \in \mathbb{R}^{n \times p}$ in a lower-dimensional space $\mathbb{R}^k$ with $k \ll p$ while preserving as much of the data's structure as possible. PCA realizes this goal under a precise notion of "structure": the variance of linear combinations of the variables.
 
-For centered data $X$, the first principal component $\mathbf{v}_1$ is the unit-norm direction that maximizes the variance of the projection $X\mathbf{v}$:
+Let $\tilde X$ denote the column-centered data matrix (each column has mean zero), optionally column-scaled to unit variance when features are on different scales — the "correlation PCA" choice adopted in the code below via `StandardScaler`. The first principal component $\mathbf{v}_1$ is the unit-norm direction that maximizes the variance of the projection $\tilde X\mathbf{v}$:
 
-$$\mathbf{v}_1 = \arg\max_{\|\mathbf{v}\|=1} \mathbf{v}^\top \hat\Sigma \mathbf{v}, \qquad \hat\Sigma = \frac{1}{n-1} X^\top X.$$
+$$\mathbf{v}_1 = \arg\max_{\|\mathbf{v}\|=1} \mathbf{v}^\top \hat\Sigma \mathbf{v}, \qquad \hat\Sigma = \frac{1}{n-1} \tilde X^\top \tilde X.$$
 
 The solution is the eigenvector of $\hat\Sigma$ corresponding to the largest eigenvalue. Subsequent principal components are defined recursively as the directions orthogonal to those already chosen that maximize the residual variance.
 
@@ -204,9 +208,9 @@ The **scree plot** displays the eigenvalues $\lambda_j$ (or the proportion of va
 
 The **proportion of variance explained**,
 
-$$\mathrm{PVE}(k) = \frac{\sum_{j=1}^k \lambda_j}{\sum_{j=1}^p \lambda_j},$$
+$$\mathrm{PVE}(k) = \frac{\sum_{j=1}^k \lambda_j}{\sum_{j=1}^{\min(n-1, p)} \lambda_j},$$
 
-provides a quantitative summary; thresholds in the range of 70 to 90 percent are common.
+provides a quantitative summary; thresholds in the range of 70 to 90 percent are common. The denominator stops at $\min(n-1, p)$ because the sample covariance has at most that many nonzero eigenvalues — the rest are exactly zero — and including them in the denominator silently understates PVE in the $p \gg n$ regime that is the subject of this lecture.
 
 The **Marchenko–Pastur threshold** offers a more principled criterion in the $p \gg n$ regime. Under the null hypothesis that all variables are independent noise, the bulk of the eigenvalues of the sample covariance matrix is distributed within $[\max(0,(1-\sqrt\gamma)^2), (1+\sqrt\gamma)^2]$ as $p, n \to \infty$ with $p/n \to \gamma$. Eigenvalues exceeding the upper edge $(1+\sqrt\gamma)^2$ correspond to components that lie above the noise floor and are therefore candidates for true signal.
 
@@ -251,22 +255,22 @@ plt.show()
 
 The Marchenko–Pastur result describes the *bulk* — the range in which all eigenvalues fall when the data are pure noise. The natural follow-up question is: when does a real signal *escape* the bulk and become visible as a leading eigenvalue?
 
-That question has a sharp answer. [Baik, Ben Arous, and Péché (2005)](https://doi.org/10.1214/009117905000000233) studied the signal-plus-noise model in which the population covariance has a single spike of magnitude $\ell$ above the identity baseline. In the asymptotic limit $p/n \to \gamma$, the leading eigenvalue of the sample covariance is *detectable* (exceeds the Marchenko–Pastur upper edge $(1+\sqrt\gamma)^2$) only if
+That question has a sharp answer. [Baik, Ben Arous, and Péché (2005)](https://doi.org/10.1214/009117905000000233) studied the spiked-covariance model in which the population covariance has a single spike of magnitude $1 + \ell$ above an identity baseline (equivalently, a signal-plus-noise data matrix with signal-to-noise ratio $\ell$). In the asymptotic limit $p/n \to \gamma$, the population spike is *detectable* — the leading sample eigenvalue jumps above the Marchenko–Pastur upper edge $(1+\sqrt\gamma)^2$ — only if
 
-$$\ell > 1 + \sqrt\gamma. \qquad \text{(BBP detection threshold)}$$
+$$\ell > \sqrt\gamma. \qquad \text{(BBP detection threshold)}$$
 
-Below this threshold, the signal eigenvalue is absorbed into the bulk and is indistinguishable from a noise eigenvalue. The leading sample principal component, in such cases, has *zero* asymptotic correlation with the true signal direction — not "noisy but informative," but actually orthogonal to it on average. The threshold is a property of the geometry of the $(p, n)$ problem; no procedure can detect signals below it.
+When $\ell > \sqrt\gamma$, the leading sample eigenvalue is approximately $(1+\ell)(1 + \gamma/\ell)$, which exceeds $(1+\sqrt\gamma)^2$. Below the threshold ($\ell \leq \sqrt\gamma$), the signal eigenvalue is absorbed into the bulk and is indistinguishable from a noise eigenvalue. The leading sample principal component, in such cases, has *zero* asymptotic correlation with the true signal direction — not "noisy but informative," but actually orthogonal to it on average. The threshold is a property of the geometry of the $(p, n)$ problem; no procedure can detect signals below it.
 
-**Numerical example: the Golub data.** With $p = 3{,}051$ genes and $n = 72$ samples, $\gamma = p/n \approx 42.4$, so the BBP threshold sits at $\ell^* = 1 + \sqrt{42.4} \approx 7.5$ and the Marchenko–Pastur upper edge at $(1+\sqrt{42.4})^2 \approx 57$. The observed leading eigenvalue is roughly $478$ (see the parallel-analysis figure above) — *eight times above the bulk's upper edge*. There is no question that the first principal component captures real biological structure on this dataset. The same calculation in single-cell genomics, where $\gamma$ can be much larger, sets a much higher bar: weaker biological structure may lie below the detection limit and require prior knowledge (marker genes, batch labels) to recover.
+**Numerical example: the Golub data.** With $p = 3{,}051$ genes and $n = 72$ samples, $\gamma = p/n \approx 42.4$, so the BBP threshold on the signal-to-noise ratio is $\ell^* = \sqrt{42.4} \approx 6.5$ and the Marchenko–Pastur upper edge sits at $(1+\sqrt{42.4})^2 \approx 57$. The observed leading eigenvalue is roughly $478$ (see the parallel-analysis figure above) — *eight times above the bulk's upper edge*. There is no question that the first principal component captures real biological structure on this dataset. The same calculation in single-cell genomics, where $\gamma$ can be much larger ($\gamma = 100$ would require $\ell > 10$), sets a much higher bar: weaker biological structure may lie below the detection limit and require prior knowledge (marker genes, batch labels) to recover.
 
 ```{python}
 #| label: fig-bbp-transition
 #| echo: false
-#| fig-cap: "The Baik–Ben Arous–Péché detection threshold by simulation. For $p = 200$ features and $n = 100$ samples ($\\gamma = p/n = 2$), data are generated as $X = \\sqrt{\\ell}\\,u v^\\top + Z$ with $u, v$ unit vectors and $Z$ a Gaussian noise matrix. The leading eigenvalue of the sample covariance is plotted against the signal strength $\\ell$. **Below** the threshold $1 + \\sqrt{\\gamma} \\approx 2.41$, the leading sample eigenvalue is indistinguishable from the noise bulk's upper edge. **Above** the threshold, it tracks the signal. The cosine similarity between the sample leading eigenvector and the true direction $u$ (right axis) drops to zero below the threshold — PCA cannot recover the direction at all."
+#| fig-cap: "The Baik–Ben Arous–Péché detection threshold by simulation. For $p = 200$ features and $n = 100$ samples ($\\gamma = p/n = 2$), data are generated as $X = \\sqrt{\\ell}\\,u v^\\top + Z$ with $u, v$ unit vectors and $Z$ a Gaussian noise matrix — a signal-plus-noise model whose corresponding population covariance has a single spike of magnitude $1 + \\ell$ above the identity baseline. The leading eigenvalue of the sample covariance is plotted against the signal-to-noise ratio $\\ell$. **Below** the threshold $\\ell^* = \\sqrt{\\gamma} \\approx 1.41$, the leading sample eigenvalue is indistinguishable from the noise bulk's upper edge $(1+\\sqrt\\gamma)^2$. **Above** the threshold, it tracks the BBP prediction $(1+\\ell)(1+\\gamma/\\ell)$. The cosine similarity between the sample leading eigenvector and the true direction $u$ (right axis) is also asymptotically zero below the threshold — PCA cannot recover the direction at all."
 #| fig-height: 3.5
 p_bbp, n_bbp = 200, 100
 gamma_bbp = p_bbp / n_bbp
-thresh = 1 + np.sqrt(gamma_bbp)
+thresh = np.sqrt(gamma_bbp)
 ells = np.linspace(0.0, 8.0, 25)
 n_rep = 25
 lead_eig = np.zeros((len(ells), n_rep))
@@ -289,7 +293,7 @@ ax.plot(ells, lead_eig.mean(axis=1), "o-", color="#3b78cc", lw=2,
 ax.fill_between(ells, lead_eig.mean(1) - lead_eig.std(1),
                 lead_eig.mean(1) + lead_eig.std(1), color="#3b78cc", alpha=0.18)
 ax.axvline(thresh, color="#c0504d", linestyle="--", lw=1.4,
-           label=fr"BBP threshold $\ell^* = 1 + \sqrt{{\gamma}} \approx {thresh:.2f}$")
+           label=fr"BBP threshold $\ell^* = \sqrt{{\gamma}} \approx {thresh:.2f}$")
 ax.axhline((1 + np.sqrt(gamma_bbp)) ** 2, color="#888", linestyle=":", lw=1,
            label="Noise-bulk upper edge")
 ax.set_xlabel(r"Signal strength $\ell$")
@@ -389,9 +393,11 @@ These behaviors are not bugs. They are consequences of t-SNE's optimization crit
 #| fig-cap: "Nonlinear embeddings produce structure from noise. **Left:** UMAP applied to the top 20 principal components of the Golub data, with the visible separation of ALL and AML reflecting real biological signal. **Right:** UMAP applied to the same matrix with every gene's expression vector randomly permuted across samples — destroying any cross-gene correlation but preserving the marginal variance. The pure-noise input still produces apparent clusters and visible structure. The lesson: a nonlinear embedding that *shows* clusters is not by itself evidence that clusters exist."
 #| fig-height: 4
 try:
-    import umap
+    # `umap-learn` installs as the `umap` package; importing the class
+    # directly fails fast if the wrong (abandoned) package is installed.
+    from umap import UMAP
     _have_umap = True
-except Exception:
+except ImportError:
     _have_umap = False
 
 if _have_umap:
@@ -402,8 +408,8 @@ if _have_umap:
         Xp_noise[:, j] = rng.permutation(Xp_noise[:, j])
     pca20_noise = PCA(n_components=20, random_state=0).fit_transform(Xp_noise)
 
-    umap_real = umap.UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20)
-    umap_noise = umap.UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20_noise)
+    umap_real = UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20)
+    umap_noise = UMAP(n_neighbors=15, min_dist=0.3, random_state=2026).fit_transform(pca20_noise)
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     for ax, emb, title in [(axes[0], umap_real, "Real Golub data"),
@@ -543,7 +549,7 @@ The combination of linear and nonlinear methods has become standard in high-dime
 2. Apply a nonlinear method (t-SNE or UMAP) to the top $k$ principal components rather than to the raw $p$-dimensional data.
 3. Interpret the resulting embedding as a tool for visualization and hypothesis generation, not as a quantitatively faithful representation of the original geometry.
 
-The motivation for the PCA-first step is twofold. PCA removes the high-dimensional noise that distorts t-SNE and UMAP, sharpening the structure that survives. It also dramatically reduces the computational cost: fitting t-SNE or UMAP on 50 dimensions is much faster than on 20,000. The Johnson–Lindenstrauss lemma ([Johnson and Lindenstrauss, 1984](https://doi.org/10.1090/conm/026/737400)) provides a related theoretical assurance — random projections approximately preserve pairwise distances — and PCA is, in the relevant noise regime, strictly better than random projection.
+The motivation for the PCA-first step is twofold. PCA removes the high-dimensional noise that distorts t-SNE and UMAP, sharpening the structure that survives — at the cost of also discarding low-variance directions, which in single-cell genomics can correspond to rare cell types whose signal lives in a small number of cells. The trade-off is usually worth it; the qualifier matters when a downstream goal is rare-population discovery. The PCA-first step also dramatically reduces the computational cost: fitting t-SNE or UMAP on 50 dimensions is much faster than on 20,000.
 
 ```{python}
 #| label: fig-workflow
@@ -577,6 +583,16 @@ for pair in [(A, B), (B, C), (C, D), (D, E)]:
 plt.tight_layout()
 plt.show()
 ```
+
+---
+
+## A cautionary case: the maps that drew themselves
+
+Beginning in the 1970s, Luigi Luca Cavalli-Sforza and colleagues applied principal component analysis to allele-frequency data measured across Europe. The leading principal components, plotted geographically as smooth interpolated contour maps, produced visually compelling wave-like gradients radiating from the Near East — and were widely interpreted as evidence of the spread of Neolithic agriculture from the Fertile Crescent ten thousand years ago. The maps were used to argue for specific migration histories and entered the textbook canon.
+
+In 2008, [Novembre and Stephens](https://doi.org/10.1038/ng.139) showed that the wave-like patterns are largely *mathematical artifacts*. The leading principal components of any spatially-sampled dataset with smoothly correlated noise tend to take a sinusoidal form, with the first PC monotonic across the sampled region, the second PC showing a single wavelength, and so on — patterns that look like migration gradients but appear in simulations where no migration occurred. The lesson is that *PCA on spatial data will always show structure*, because that is what spectral decomposition of a positive-definite operator does on a bounded domain. Whether that structure reflects biology or geometry requires independent verification: replication in unrelated samples, comparison to a null model with the appropriate spatial correlation, or correspondence with historical and archaeological evidence.
+
+The same warning applies in the workshop's running setting. The Golub PC1 separation of ALL and AML is supported by the parallel-analysis result that the leading eigenvalue sits an order of magnitude above the permutation distribution — that is the verification step. Without that step, "PC1 separates the groups" is a description of the algorithm's output, not a discovery about the biology.
 
 ---
 
@@ -637,5 +653,7 @@ Four claims structure this lecture.
 2. **In $p \gg n$, random-matrix theory imposes fundamental detection limits.** The Marchenko–Pastur bulk and the BBP threshold are properties of the geometry of the problem, not of the procedure. Parallel analysis is the empirical diagnostic of choice.
 3. **t-SNE and UMAP expose nonlinear structure but distort distances, cluster sizes, and cluster counts.** Their plots are sketches for exploration, not photographs for confirmation.
 4. **The defensible workflow is standardize → PCA to $k$ → nonlinear method on the top $k$ PCs**, accompanied by the diagnostic protocol above. Every step has a check; every check has a corresponding Lab 3 exercise.
+
+Together with Lecture 2, this lecture completes the unsupervised-estimation arc of the workshop. Lecture 2 estimated the proportion of nulls $\pi_0$, the alternative density $f_1$, and the per-test posterior $\mathrm{fdr}(z)$ — all from the histogram of a single batch of test statistics. Lecture 3 estimates the low-dimensional manifold on which the high-dimensional observations live — from the *spectrum* of the same data matrix that produced those test statistics. The histogram and the spectrum are two views of the same object; the diagnostic protocols (parallel analysis, UMAP-on-noise, empirical null) are the same kind of safeguard against reading structure into noise.
 
 Lab 3 applies the full pipeline to the Golub dataset: PCA + scree + parallel analysis, UMAP and t-SNE on the top 30 PCs, the UMAP-on-noise diagnostic, seed-stability, and parameter sweeps. Lecture 4 turns from unsupervised structure discovery to the supervised problem of building a predictive model when $p \gg n$ — the regime in which classical regression fails most spectacularly.

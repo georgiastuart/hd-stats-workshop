@@ -76,18 +76,22 @@ That is the program of this lecture.
 
 ## Stein's paradox and the case for shrinkage
 
-The historical anchor is [Stein's (1956)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Third-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Inadmissibility-of-the-Usual-Estimator-for-the-Mean-of-a/bsmsp/1200501656) result on the inadmissibility of the sample mean. Suppose one observes $y_1, \ldots, y_d$ with $y_i \sim N(\theta_i, 1)$ and wishes to estimate the vector $\boldsymbol\theta = (\theta_1, \ldots, \theta_d)$ under squared-error loss. The natural estimator is $\hat\theta_i = y_i$. Stein proved that this estimator is *inadmissible* whenever $d \geq 3$: there exists another estimator with strictly smaller risk for every $\boldsymbol\theta$. The [James–Stein estimator (1961)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Fourth-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Estimation-with-Quadratic-Loss/bsmsp/1200512173) realizes the improvement explicitly,
+The historical anchor is [Stein's (1956)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Third-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Inadmissibility-of-the-Usual-Estimator-for-the-Mean-of-a/bsmsp/1200501656) result on the inadmissibility of the sample mean. Suppose one observes $y_1, \ldots, y_d$ with $y_i \sim N(\theta_i, 1)$ and wishes to estimate the vector $\boldsymbol\theta = (\theta_1, \ldots, \theta_d)$ under squared-error loss. The natural estimator is $\hat\theta_i = y_i$. Stein proved that this estimator is *inadmissible* whenever $d \geq 3$: there exists another estimator with risk no larger for every $\boldsymbol\theta$ and strictly smaller for at least one. The [James–Stein estimator (1961)](https://projecteuclid.org/proceedings/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Fourth-Berkeley-Symposium-on-Mathematical-Statistics-and/Chapter/Estimation-with-Quadratic-Loss/bsmsp/1200512173) realizes the improvement explicitly. Shrinking each coordinate toward a *known* fixed target — say zero — yields the classical shrink-to-zero form,
 
-$$\hat\theta_i^{\mathrm{JS}} = \bar y + \left(1 - \frac{(d-3)\sigma^2}{\sum_j (y_j - \bar y)^2}\right)(y_i - \bar y),$$
+$$\hat\theta_i^{\mathrm{JS,0}} = \left(1 - \frac{(d-2)\sigma^2}{\sum_j y_j^2}\right) y_i, \qquad d \geq 3,$$
 
-shrinking each coordinate toward the grand mean of all coordinates. The shrinkage factor is data-dependent: when the $y_i$ are tightly clustered, more shrinkage; when they are spread out, less. The dependence of the estimate for $\theta_i$ on the other coordinates is what produces the risk improvement.
+while shrinking toward the *grand mean* of the observations — itself estimated from the data — yields
+
+$$\hat\theta_i^{\mathrm{JS}} = \bar y + \left(1 - \frac{(d-3)\sigma^2}{\sum_j (y_j - \bar y)^2}\right)(y_i - \bar y), \qquad d \geq 4.$$
+
+Both shrink each coordinate, the first toward zero and the second toward the grand mean of all coordinates. The shrink-to-mean form uses $(d-3)$ rather than $(d-2)$ because one degree of freedom is consumed by estimating $\bar y$ from the data; the dominance threshold rises correspondingly from $d \geq 3$ to $d \geq 4$. The shrinkage factor is data-dependent: when the $y_i$ are tightly clustered around the target, more shrinkage; when they are spread out, less. The dependence of the estimate for $\theta_i$ on the other coordinates is what produces the risk improvement.
 
 ```{python}
 #| label: fig-js-shrinkage
 #| echo: false
 #| fig-cap: "James–Stein shrinkage in action. Twenty true means $\\theta_i$ are drawn from $N(0,1)$ and each is observed once with unit noise, yielding $y_i \\sim N(\\theta_i, 1)$. **Top row (gray):** MLE estimates $\\hat\\theta_i = y_i$, plotted on the horizontal axis at their observed values. **Bottom row (red):** James–Stein estimates $\\hat\\theta_i^{\\,\\mathrm{JS}}$, plotted at the same horizontal scale. The blue dashed line is the grand mean $\\bar y$. Each arrow connects an MLE to its JS estimate; every arrow points *toward $\\bar y$*. The JS points are visibly clustered more tightly around $\\bar y$ than the MLE points — the spread of the estimates has been reduced by the shrinkage factor $c$."
 #| fig-height: 4
-sim_rng = np.random.default_rng(42)
+sim_rng = np.random.default_rng(2026)
 d = 20
 sigma = 1.0
 theta = sim_rng.normal(0, 1, size=d)
@@ -153,7 +157,7 @@ plt.show()
 
 The Stein result was counterintuitive in 1956 and remains so. Each $y_i$ is the maximum-likelihood estimate of $\theta_i$, depends only on the data relevant to $\theta_i$, and is unbiased. None of that survives the move to vector loss: when one cares about all of the $\theta_i$ simultaneously, the estimator can be strictly improved by allowing each coordinate to depend on the others.
 
-[Efron and Morris (1977)](https://www.jstor.org/stable/24953895) demonstrated the practical force of the result with a baseball illustration. End-of-season batting averages for 18 major-league players are predicted more accurately by *shrinking each player's early-season average toward the grand mean across players* than by using each player's own data alone. The players are independent in any biological or causal sense; their data nevertheless improve every individual estimate.
+[Efron and Morris (1977, *Scientific American*, May issue)](https://www.jstor.org/stable/24953895) — the popular companion to their 1975 technical paper in [*JASA*](https://doi.org/10.1080/01621459.1975.10479864) — demonstrated the practical force of the result with a baseball illustration. End-of-season batting averages for 18 major-league players are predicted more accurately by *shrinking each player's early-season average toward the grand mean across players* than by using each player's own data alone. The players are independent in any biological or causal sense; their data nevertheless improve every individual estimate.
 
 ### The Efron–Morris baseball analysis in detail
 
@@ -174,7 +178,7 @@ The result, measured by total squared prediction error against the end-of-season
 #| echo: false
 #| fig-cap: "A simulated version of the Efron–Morris baseball analysis. Eighteen true batting averages $\\theta_i$ are drawn around a league mean of 0.265 with reasonable spread; each player's early-season average $y_i$ is simulated as 45 Bernoulli trials at $\\theta_i$ (left panel). The three estimators (MLE = early average; grand mean = league average for everyone; James–Stein = shrinkage between the two) are evaluated against the true $\\theta_i$ (right panel). For this simulation JS wins on aggregate squared loss while losing to the MLE on the two extreme players (the very best and very worst hitters). The qualitative pattern matches Efron & Morris (1977)."
 #| fig-height: 4
-sim_rng2 = np.random.default_rng(1970)
+sim_rng2 = np.random.default_rng(2026)
 n_players, at_bats = 18, 45
 theta_b = np.clip(sim_rng2.normal(0.265, 0.030, size=n_players), 0.15, 0.40)
 y_b = sim_rng2.binomial(at_bats, theta_b) / at_bats        # MLE
@@ -251,7 +255,7 @@ Stein's paradox does not say the sample mean is bad. It says the sample mean is 
 
 $$L(\hat{\boldsymbol\theta}, \boldsymbol\theta) = \sum_{i=1}^d (\hat\theta_i - \theta_i)^2.$$
 
-Under this loss, the James–Stein estimator achieves strictly smaller risk than the MLE for every $\boldsymbol\theta$ whenever $d \geq 3$. The key qualifier is *strictly* — and the cost is that every individual coordinate is biased.
+Under this loss, the James–Stein estimator achieves smaller risk than the MLE for every $\boldsymbol\theta$ and strictly smaller risk for at least one — i.e., it dominates the MLE in the formal inadmissibility sense — whenever $d \geq 3$ (shrink-to-zero) or $d \geq 4$ (shrink-to-mean). The key qualifier is *dominates* — and the cost is that every individual coordinate is biased.
 
 A short formulation captures the trade-off:
 
@@ -273,9 +277,9 @@ The settings where JS-style shrinkage dominates are those in which the *aggregat
 ```{python}
 #| label: fig-risk-curve
 #| echo: false
-#| fig-cap: "Risk curves for the MLE and James–Stein estimators as a function of the size of the true parameter vector, $\\|\\boldsymbol\\theta\\|^2/d$. Both axes are on a log scale; smaller is better. The MLE risk is flat at $\\sigma^2$ — the per-coordinate sampling variance — regardless of $\\boldsymbol\\theta$. The JS risk is *strictly smaller* for every value of $\\|\\boldsymbol\\theta\\|^2$, with the largest improvement when $\\|\\boldsymbol\\theta\\|$ is small (because then shrinking toward zero is approximately correct). The improvement narrows as $\\|\\boldsymbol\\theta\\|$ grows: JS still beats MLE but by less. Each point is averaged over 400 simulation runs at $d = 30$, $\\sigma^2 = 1$."
+#| fig-cap: "Risk curves for the MLE and James–Stein estimators as a function of the size of the true parameter vector, $\\|\\boldsymbol\\theta\\|^2/d$. Both axes are on a log scale; smaller is better. **For this figure JS uses the simpler shrink-to-zero form with $(d-2)$, which gives the cleanest cartoon of the dominance theorem** (the headline shrink-to-mean form with $(d-3)$, used in the shrinkage figure above, dominates by a smaller margin because one degree of freedom is consumed by $\\bar y$). The MLE risk is flat at $\\sigma^2$ — the per-coordinate sampling variance — regardless of $\\boldsymbol\\theta$. The JS risk is strictly smaller for every value of $\\|\\boldsymbol\\theta\\|^2$, with the largest improvement when $\\|\\boldsymbol\\theta\\|$ is small (because then shrinking toward zero is approximately correct). The improvement narrows as $\\|\\boldsymbol\\theta\\|$ grows. Each point is averaged over 400 simulation runs at $d = 30$, $\\sigma^2 = 1$."
 #| fig-height: 3.5
-sim_rng5 = np.random.default_rng(3)
+sim_rng5 = np.random.default_rng(2026)
 d_risk = 30
 sigma2 = 1.0
 sizes = np.logspace(-1, 2, 12)
@@ -341,14 +345,14 @@ The empirical-Bayes machinery is not a replacement for classical estimation but 
 
 $$f(z) = \pi_0\, f_0(z) + (1-\pi_0)\, f_1(z).$$
 
-The framework unifies the procedures of Lecture 1 and produces the local FDR as a corollary. With $m$ in the thousands, $f(z)$ can be estimated nonparametrically — for instance by a histogram or by Lindsey's method, which fits a Poisson regression to binned counts. Once $f$ is in hand, $\pi_0$ can be estimated from the central peak (where $f_0$ dominates) and $f_1$ recovered by subtraction.
+The framework unifies the procedures of Lecture 1 and produces the local FDR as a corollary. With $m$ in the thousands, $f(z)$ can be estimated nonparametrically — for instance by Lindsey's method (a Poisson regression on binned counts) or, as in the figures below, by a kernel density estimate. Once $f$ is in hand, $\pi_0$ can be estimated from the central peak (where $f_0$ dominates) and $f_1$ recovered by subtraction.
 
 ```{python}
 #| label: fig-two-groups-decomp
 #| echo: false
 #| fig-cap: "The two-groups mixture $f(z) = \\pi_0 f_0(z) + (1-\\pi_0) f_1(z)$. Simulated $z$-scores ($m=5{,}000$, $\\pi_0 = 0.85$) histogram in light blue. The blue density is the null contribution $\\pi_0 f_0(z)$; the orange density is the alternative contribution $(1-\\pi_0) f_1(z)$; the black curve is their sum, the mixture $f(z)$ that the histogram is estimating. Where the orange exceeds the blue (in the tails), the local FDR is below 0.5 and the corresponding tests are more likely non-null than null."
 #| fig-height: 3.5
-sim_rng3 = np.random.default_rng(7)
+sim_rng3 = np.random.default_rng(2026)
 m_sim, pi0_sim = 5000, 0.85
 m1 = int(round(m_sim * (1 - pi0_sim)))
 z_null = sim_rng3.normal(0, 1, size=m_sim - m1)
@@ -422,13 +426,13 @@ plt.tight_layout()
 plt.show()
 ```
 
-The decision rule "reject when $\mathrm{fdr}(z) < c$" for some threshold $c$ (often $c = 0.2$ in genomics) is equivalent to applying a Bayesian decision rule with the empirical-Bayes posterior, and produces results that closely track BH for genes in the tails of the distribution while diverging — informatively — for genes near the rejection boundary.
+The decision rule "reject when $\mathrm{fdr}(z) < c$" for some threshold $c$ (often $c = 0.2$ in genomics) is the Bayes-optimal rule under 0-1 loss with cost ratio $c : (1-c)$ between false positives and false negatives — that is, declaring a gene non-null when the posterior odds of being non-null exceed $(1-c)/c$. The resulting rule broadly agrees with BH for genes in the deep tails of the distribution while diverging — informatively, and not always in the same direction — for genes near the rejection boundary.
 
 ---
 
 ## The two-groups model on the Golub data
 
-The procedure can be made concrete by applying it to the dataset that has accompanied every lecture so far: the 3,051 gene-level $t$-statistics from Golub's ALL/AML comparison (Lab 1). Convert each $t$ to a $z$-score via $z_i = \Phi^{-1}(1 - p_i/2)\cdot \mathrm{sign}(\hat\beta_i)$, where the sign is taken from the direction of the mean difference. The histogram of these 3,051 $z$-scores shows the structure the two-groups model is designed to capture: a central peak roughly resembling $N(0,1)$, and heavy tails on both sides.
+The procedure can be made concrete by applying it to the dataset that has accompanied every lecture so far: the 3,051 gene-level $t$-statistics from Golub's ALL/AML comparison (Lab 1). Convert each $t_i$ to a $z$-score via $z_i = \Phi^{-1}(1 - p_i/2)\cdot \mathrm{sign}(t_i)$, where the sign is carried over from the $t$-statistic (equivalently, from the direction of the mean difference). The histogram of these 3,051 $z$-scores shows the structure the two-groups model is designed to capture: a central peak roughly resembling $N(0,1)$, and heavy tails on both sides.
 
 ```{python}
 #| label: fig-golub-zhist
@@ -454,7 +458,7 @@ Fit $\hat f(z)$ nonparametrically — for instance, by kernel density estimation
 
 $$\hat\pi_0 = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)},\quad \lambda = 0.5,$$
 
-following Storey's method introduced in Lecture 1. In the Golub data, $\hat\pi_0$ comes out near 0.6: roughly 60 percent of the 3,051 genes are estimated to be null, leaving an effective $\hat m_1 \approx 1{,}200$ non-null genes. The proportion non-null is large because ALL and AML are genuinely different diseases — the transcriptomic differences between them are substantial, and that biological reality is visible in the histogram as a flat region whose height is well below one.
+following Storey's method introduced in Lecture 1. In the Golub data, $\hat\pi_0$ comes out near 0.6: roughly 60 percent of the 3,051 genes are estimated to be null, leaving an effective $\hat m_1 \approx 1{,}200$ non-null genes. The proportion non-null is large because ALL and AML are genuinely different diseases — the transcriptomic differences between them are substantial, and that biological reality is visible in the histogram as a flat region whose height is well below one. (The estimate depends on the tuning parameter $\lambda$ — choosing $\lambda = 0.3$ or $\lambda = 0.7$ shifts $\hat\pi_0$ by a few percentage points either way. The standard `qvalue` package fits $\hat\pi_0(\lambda)$ as a smooth function of $\lambda$ and reads off its limit as $\lambda \to 1$ to remove this sensitivity.)
 
 ```{python}
 #| label: fig-golub-twogroups
@@ -521,9 +525,13 @@ plt.tight_layout()
 plt.show()
 ```
 
+### Does Golub need an empirical null?
+
+A natural follow-up to the Singh cautionary case below is to ask whether the theoretical $N(0,1)$ null was appropriate for the Golub analysis above. Fitting $f_0 = N(\hat\delta_0, \hat\sigma_0^2)$ to the central portion of the Golub $z$-histogram ($|z| < 2$) yields a $\hat\sigma_0$ close to 1 (typically within ±0.05) and $\hat\delta_0$ close to 0 — that is, the theoretical null is roughly adequate for Golub, and the local-FDR analysis above need not be revised. Singh is the case where this check would have changed the conclusion; Golub is not.
+
 ### Comparison with Lab 1's BH list
 
-Lab 1 reports the Golub gene list obtained by applying BH at FDR $= 0.05$. That list contains a few hundred genes — those with the smallest $p$-values, up to the BH cutoff. Applying the local FDR rule $\widehat{\mathrm{fdr}}(z) < 0.20$ to the same data produces a list of comparable size, with substantial overlap. The two lists differ at the margin: a gene with $z$ just past the BH cutoff but with a local FDR of 0.18 is more confidently non-null than a gene at the BH boundary with a local FDR of 0.35. The local FDR gives the analyst a per-gene confidence that the tail-area BH cannot. Lab 2 walks through this comparison explicitly.
+Lab 1 reports the Golub gene list obtained by applying BH at FDR $= 0.05$. That list contains a few hundred genes — those with the smallest $p$-values, up to the BH cutoff. Applying the local FDR rule $\widehat{\mathrm{fdr}}(z) < 0.20$ to the same data produces a list of comparable size, with substantial overlap. The two lists broadly agree in the deep tails and differ at the margin: a gene with $z$ just past the BH cutoff but with a local FDR of 0.18 is more confidently non-null than a gene at the BH boundary with a local FDR of 0.35. The local FDR gives the analyst a per-gene confidence that the tail-area BH cannot. Lab 2 walks through this comparison explicitly.
 
 ```{python}
 #| label: fig-bh-vs-localfdr
@@ -589,7 +597,7 @@ The moderated statistic is more conservative for genes with anomalously small $s
 ```{python}
 #| label: fig-limma-shrinkage
 #| echo: false
-#| fig-cap: "limma-style empirical-Bayes variance shrinkage on the Golub data. Each point is one of the 3,051 genes. The horizontal axis is the raw gene-level standard deviation $s_g$ (the maximum-likelihood estimate); the vertical axis is the moderated estimate $\\tilde s_g$ that shrinks $s_g$ toward the population prior. The diagonal is the identity (no shrinkage). Genes with anomalously small $s_g$ are pulled *up* (away from zero, increasing the implicit $t$-statistic denominator and the moderated test is more conservative), while genes with anomalously large $s_g$ are pulled *down*. The shrinkage prevents spurious significance driven by a coincidentally small $s_g$."
+#| fig-cap: "limma-style empirical-Bayes variance shrinkage on the Golub data. Each point is one of the 3,051 genes. The horizontal axis is the raw gene-level standard deviation $s_g$ (the maximum-likelihood estimate); the vertical axis is the moderated estimate $\\tilde s_g$ that shrinks $s_g$ toward the population prior. The diagonal is the identity (no shrinkage). Genes with anomalously small $s_g$ are pulled *up* toward the prior $\\sqrt{s_0^2}$, which makes their moderated $t$-statistic smaller in magnitude (more conservative); genes with anomalously large $s_g$ are pulled *down*, which makes their moderated $t$ larger (more sensitive). The shrinkage prevents the spurious significance that arises when a gene's variance estimate happens to be coincidentally small."
 #| fig-height: 3.6
 # Per-gene sample SDs (pooled across the two groups)
 all_data = expr.loc[:, all_mask].values
@@ -656,7 +664,7 @@ A $\hat\sigma_0$ of 1.10 may sound small, but its consequences for tail-area inf
 #| echo: false
 #| fig-cap: "Simulation mimicking the Singh prostate-cancer histogram. 5,500 simulated null $z$-scores are drawn from $N(0, 1.10^2)$ (matching Efron's empirical-null fit) and 500 alternatives from $N(2.8, 1)$. The light-blue histogram is the observed mixture. The red dashed curve is the assumed theoretical null $N(0,1)$; it is too narrow to match the central peak. The blue solid curve is the empirical null fit to the central portion of the histogram; it matches. Applying the theoretical null produces many more false discoveries than applying the empirical null."
 #| fig-height: 3.5
-sim_rng4 = np.random.default_rng(2024)
+sim_rng4 = np.random.default_rng(2026)
 m_sim2, m1_sim2 = 6000, 500
 z_null_sim = sim_rng4.normal(0, 1.10, size=m_sim2 - m1_sim2)
 z_alt_sim = sim_rng4.normal(2.8, 1.0, size=m1_sim2)

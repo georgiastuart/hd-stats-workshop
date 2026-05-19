@@ -94,7 +94,7 @@ hd-stats-workshop/
 │   ├── lecture2-slides.qmd # Reveal.js slide deck for L2
 │   ├── lecture3.qmd        # Essay: "The Map That Drew Itself" (L3 = dimension reduction)
 │   ├── lecture3-slides.qmd # Reveal.js slide deck for L3
-│   ├── lecture4.qmd        # Essay: "Seventy Genes and a Fraud" (L4 = penalized regression)
+│   ├── lecture4.qmd        # Essay: "The Coefficients That Stayed Zero" (L4 = penalized regression)
 │   ├── lecture4-slides.qmd # Reveal.js slide deck for L4
 │   ├── lecture-outlines.md # Master outline at three levels of detail
 │   └── images/IMAGES_TODO.md # Provenance of L1 slide images extracted from source PDFs
@@ -157,7 +157,7 @@ Every lecture (L1–L4) has **both** an essay (`lectureN.qmd`) and a slide deck 
 ### Day 2 — geometry then prediction
 
 - **Lecture 3 — *The Map That Drew Itself* (dimension reduction).** PCA and the SVD, scree plots and parallel analysis, the Marchenko–Pastur / BBP detection threshold, t-SNE and UMAP, the systematic ways nonlinear embeddings mislead (UMAP-on-noise), and the PCA-first practical workflow.
-- **Lecture 4 — *Seventy Genes and a Fraud* (penalized regression).** Ridge / LASSO / elastic net, the geometry of sparsity, cross-validation for $\lambda$ selection, bootstrap stability for LASSO selection, and the two case studies (MammaPrint vs. Duke metagene) that show the same statistical method producing opposite outcomes for reasons entirely about validation.
+- **Lecture 4 — *The Coefficients That Stayed Zero* (penalized regression).** Ridge / LASSO / elastic net, the geometry of sparsity, cross-validation for $\lambda$ selection, bootstrap stability for LASSO selection, and two case studies (MammaPrint vs. Duke metagene) showing that high-dimensional clinical signatures succeed or fail because of the validation pipeline that surrounds them, not because of the regularizer chosen.
 
 ### Running a lecture
 

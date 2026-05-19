@@ -7,7 +7,6 @@ format:
     theme: default
     slide-number: true
     chalkboard: true
-    smaller: true
     scrollable: true
     code-fold: true
     footer: "High-Dimensional Data Analysis Workshop | BTP"
@@ -77,7 +76,7 @@ The gene appears to *moderate* the effect of stress: only short-allele carriers 
 ::: {.notes}
 This is the key figure of Caspi 2003. A single longitudinal cohort (Dunedin, New Zealand, ~847 individuals followed from birth), genotyped at the serotonin transporter promoter. The claim is gene-by-environment interaction: the s/s and s/l carriers are stress-sensitive; the l/l carriers are protected.
 
-The paper was cited over 8,000 times — a well-cited paper in genetics typically gets a few hundred citations, a famous one gets 1,000. 8,000 marks a field-defining result. It launched a subfield, anchored textbooks, and shaped 15 years of follow-on research.
+The paper has been cited roughly 11,000 times on Google Scholar by 2026 — a well-cited paper in genetics typically gets a few hundred citations, a famous one gets 1,000. Eleven thousand marks a field-defining result. It launched a subfield, anchored textbooks, and shaped 15 years of follow-on research.
 
 Hold this picture in mind; Border et al. (2019) tested the same claim in samples 100× larger, and the result will not survive.
 :::
@@ -94,9 +93,9 @@ Hold this picture in mind; Border et al. (2019) tested the same claim in samples
 |---|---:|
 | Typical human-genetics paper | ~200 |
 | Famous landmark | ~1,000 |
-| Caspi et al. 2003 | **>8,000** |
+| Caspi et al. 2003 | **~11,000** |
 
-Eight thousand citations marks a field-defining result — the kind that anchors textbooks and launches subfields.
+Eleven thousand citations (Google Scholar, 2026) marks a field-defining result — the kind that anchors textbooks and launches subfields.
 :::
 ::: {.column width="50%"}
 **Replication attempts, 2003–2018**
@@ -113,7 +112,7 @@ This pattern is itself a diagnostic. When an effect is real, replications conver
 ::::
 
 ::: {.notes}
-The point of this slide: a finding cited 8,000 times nevertheless produced 15 years of contradictory replications. Citations measure influence, not truth. A heavy citation count means the result entered the textbooks; it does not mean the result was correct. The replication pattern — positive, negative, and null in roughly equal measure — was visible the whole time and should have been read as evidence against the original claim. The field nevertheless continued to interpret ambiguous evidence in its favor: the biology was plausible, the original study was well-designed by the standards of its era, and a sufficient number of "confirmatory" replications kept the hypothesis alive.
+The point of this slide: a finding cited 11,000 times nevertheless produced 15 years of contradictory replications. Citations measure influence, not truth. A heavy citation count means the result entered the textbooks; it does not mean the result was correct. The replication pattern — positive, negative, and null in roughly equal measure — was visible the whole time and should have been read as evidence against the original claim. The field nevertheless continued to interpret ambiguous evidence in its favor: the biology was plausible, the original study was well-designed by the standards of its era, and a sufficient number of "confirmatory" replications kept the hypothesis alive.
 :::
 
 ---
@@ -165,7 +164,7 @@ The 5-HTTLPR effect was not "smaller than originally reported." It was absent.
 ::: {.notes}
 This is the figure. Eighteen candidate genes. Zero replication. Make the SLC6A4 = 5-HTTLPR equivalence explicit if it hasn't already landed — SLC6A4 is the gene name; 5-HTTLPR is the polymorphism in its promoter region. Same locus, different naming convention.
 
-The dashed line at $\alpha = 2.61 \times 10^{-6}$ is the Bonferroni-style correction for the 18 candidate genes' tagging set after accounting for linkage disequilibrium. The genome-wide convention is $5 \times 10^{-8}$, which is even stricter; we will return to it.
+The dashed line at $\alpha = 2.61 \times 10^{-6}$ is the Bonferroni-style correction for the ~19,000 SNP tests across the candidate-gene tagging set (Border 2019 tested every SNP within each candidate gene's region, then applied Bonferroni to the resulting test count, *not* to the 18 genes themselves). The genome-wide convention is $5 \times 10^{-8}$, which is stricter still; we will return to it.
 
 Don't yet explain the mechanisms — just establish the empirical fact: when the test was rerun at scale, with preregistration and adequate power, none of the historical candidate-gene claims for depression held up. The rest of the lecture builds the framework for why this is the expected outcome when many small studies are run without proper multiple-testing correction.
 :::
@@ -173,6 +172,10 @@ Don't yet explain the mechanisms — just establish the empirical fact: when the
 ---
 
 # The Golub Dataset {.centered}
+
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+3,051 genes × 72 leukemia patients — the workshop's running example.
+:::
 
 ::: {.notes}
 Shift gears. "Let's start with a dataset."
@@ -269,6 +272,10 @@ This is the multiple testing problem in one line of arithmetic. The mathematics 
 
 # The P-Value Histogram {.centered}
 
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+The single most informative display in high-dimensional inference.
+:::
+
 ::: {.notes}
 "I want to show you the single most useful plot in high-dimensional statistics. It's not a volcano plot. It's not a heatmap. It's a histogram of p-values."
 :::
@@ -316,6 +323,8 @@ from scipy import stats
 
 expr = pd.read_csv("../data/golub_expression.csv", index_col=0)
 meta = pd.read_csv("../data/golub_metadata.csv", dtype={"sample_id": str})
+# Guard against any future re-export with reordered columns:
+assert list(expr.columns) == list(meta["sample_id"]), "expr/meta sample order mismatch"
 subtype = meta["subtype"].values
 all_mask = subtype == "ALL"
 
@@ -368,10 +377,21 @@ A few slides from now we will use this same histogram to construct the BH and St
 
 ## The canonical diagnostic: spike + flat tail with two reference lines
 
-![](images/pval-histogram-pathologies.png){fig-alt="Storey & Tibshirani (2003) Figure 1: p-value histogram from the Hedenfalk breast cancer dataset; dashed line at the uniform-null density, dotted line at the estimated null proportion" width="55%"}
+:::: {.columns}
+::: {.column width="58%"}
+![](images/pval-histogram-pathologies.png){fig-alt="Storey & Tibshirani (2003) Figure 1: p-value histogram from the Hedenfalk breast cancer dataset; dashed line at the uniform-null density, dotted line at the estimated null proportion" width="100%"}
+:::
+::: {.column width="42%"}
+**How to read the figure**
 
-**Dashed line:** density if all genes were null (uniform; height = 1).
-**Dotted line:** estimated density of the null genes ($\hat\pi_0$, read off the flat region) — the central quantity in Storey's adaptive FDR control (next sub-section) and in Efron's two-groups model (Lecture 2).
+- x-axis: $p$-value across $[0,1]$.
+- y-axis: density (the histogram is density-scaled).
+- **Dashed line at 1:** density if every gene were null ($p$-values uniform).
+- **Dotted line below it:** estimated density of the null genes, $\hat\pi_0$, read off the flat region.
+
+**Takeaway.** That second line is the central quantity. Its height is $\hat\pi_0$ — the estimated *proportion* of true nulls in the experiment, which is what makes the false discovery rate computable. Storey's $q$-value (next sub-section) and Efron's two-groups model (Lecture 2) are both built on this number.
+:::
+::::
 
 ::: {.notes}
 This is the canonical version of the diagnostic, from Storey & Tibshirani (2003). The histogram is the 3,170 p-values from the Hedenfalk breast cancer dataset — a different experiment from Golub, but the same shape: a spike near zero, then a roughly flat tail.
@@ -384,6 +404,10 @@ That second line is the key idea. The height of the flat tail is not just descri
 ---
 
 # Bonferroni and Family-Wise Error Rate Control {.centered}
+
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+The right tool when even one false positive is unacceptable — and the wrong tool for discovery.
+:::
 
 ::: {.notes}
 "So you have 3,051 p-values and a histogram that shows real signal. You want to call some genes significant. But you know that if you use the standard 0.05 threshold, you'll get over a hundred false positives mixed in with the real results. What do you do?"
@@ -428,21 +452,11 @@ $$\text{FWER} = P(\text{any false positive}) \leq 0.05.$$
 ::::
 
 ::: {.notes}
-Bonferroni is the simplest possible correction: divide your significance level by the number of tests. The math is the union bound applied to $m$ events, each with probability at most $\alpha/m$. It is conservative — it does not require independence — and it works for any $m$. In the next slide we will see *what* it costs: the threshold becomes so stringent that most real signal is rejected.
+Bonferroni is the simplest possible correction: divide your significance level by the number of tests. You want the probability of making any false positive — even one — to be at most 5%. This is the family-wise error rate, or FWER. If each individual test has a false positive probability of α/m, then by the union bound, the probability that at least one of the m tests produces a false positive is at most m × (α/m) = α.
 
-The genome-wide threshold $5 \times 10^{-8}$ is essentially Bonferroni at the million-SNP scale, refined for linkage disequilibrium. Caspi's 5-HTTLPR study did not face Bonferroni at this scale — it was framed as a single-test confirmation of a *specific* hypothesis. The pathology described in this lecture comes from the candidate-gene literature treating each study as a single test, while the field collectively ran thousands of implicit tests.
-:::
+Bonferroni is clean, easy to explain, and requires no assumptions about the dependence structure of your tests — it works whether your genes are independent or correlated, and whether you're testing 10 hypotheses or 10 million. The genome-wide threshold $5 \times 10^{-8}$ is essentially Bonferroni at the million-SNP scale, refined for linkage disequilibrium. Caspi's 5-HTTLPR study did not face Bonferroni at this scale — it was framed as a single-test confirmation of a *specific* hypothesis. The pathology described in this lecture comes from the candidate-gene literature treating each study as a single test, while the field collectively ran thousands of implicit tests.
 
-::: {.notes}
-The oldest and simplest answer is Bonferroni correction. The idea is almost embarrassingly straightforward: divide your significance level by the number of tests. Instead of calling a gene significant at p < 0.05, you call it significant at p < 0.05 / 3,051 ≈ 1.6 × 10⁻⁵.
-
-The logic goes like this. You want the probability of making any false positive — even one — to be at most 5%. This is called the family-wise error rate, or FWER. If each individual test has a false positive probability of α/m, then by the union bound, the probability that at least one of the m tests produces a false positive is at most m × (α/m) = α. Done.
-
-Bonferroni is clean, easy to explain, and requires no assumptions about the dependence structure of your tests. It works whether your genes are independent or correlated. It works whether you're testing 10 hypotheses or 10 million. In genome-wide association studies, where you're testing around a million genetic variants, the convention is a significance threshold of 5 × 10⁻⁸ — which is just Bonferroni at the million-variant scale. The actual number comes from a more sophisticated calculation involving linkage disequilibrium and the effective number of independent tests in the genome, but it's in the Bonferroni ballpark.
-
-And Bonferroni works, in the sense that it does what it promises. If you apply Bonferroni to 3,051 tests, the probability that any of your declared significant genes is a false positive is at most 5%.
-
-But here's the problem: Bonferroni controls the wrong thing.
+Bonferroni does what it promises: applied to 3,051 tests, the probability that any of your declared significant genes is a false positive is at most 5%. In the next slide we will see what it costs: the threshold becomes so stringent that most real signal is rejected. The problem isn't that Bonferroni is broken — it's that it controls the *wrong thing* for a discovery-oriented analysis.
 :::
 
 ---
@@ -475,7 +489,7 @@ You can barely see the red line. It's jammed against zero. Only the very tip of 
 
 If you're an astronomer and you're about to announce the discovery of gravitational waves, yes, you want to be very sure you haven't made even one false positive. The standard there is "five sigma," roughly one in 3.5 million. The cost of a false claim is enormous.
 
-But if you're a biologist screening 12,625 genes to find candidates for follow-up experiments, you're in a completely different situation. You don't need a guarantee that every gene on your list is real. You need a useful list — one where most of the genes are real and the false positives are a manageable fraction. If your list of 500 genes contains 25 false positives, that's a 5% false discovery rate, and for most biological applications, that's fine. You'll validate the interesting ones in follow-up experiments anyway.
+But if you're a biologist screening 3,051 genes to find candidates for follow-up experiments, you're in a completely different situation. You don't need a guarantee that every gene on your list is real. You need a useful list — one where most of the genes are real and the false positives are a manageable fraction. If your list of 500 genes contains 25 false positives, that's a 5% false discovery rate, and for most biological applications, that's fine. You'll validate the interesting ones in follow-up experiments anyway.
 
 Bonferroni can't give you that list. It's trying to prevent a different kind of error — any error at all — and in doing so, it throws away most of your real discoveries.
 :::
@@ -489,9 +503,9 @@ Bonferroni can't give you that list. It's trying to prevent a different kind of 
 ![](images/dead-salmon-poster.png){fig-alt="Bennett, Miller and Wolford 2009 HBM conference poster: 'Neural correlates of interspecies perspective taking in the post-mortem Atlantic salmon'" width="100%"}
 :::
 ::: {.column width="45%"}
-**The experiment** (Bennett et al., HBM 2009)
+**The experiment** (Bennett et al., HBM 2009 poster; published in the *Journal of Serendipitous and Unexpected Results* in 2010)
 
-A dead Atlantic salmon was placed in an fMRI scanner and "shown" photographs of humans in social situations. A standard fMRI analysis pipeline tested ~130,000 voxels for signal change in response to the stimuli.
+A dead Atlantic salmon was placed in an fMRI scanner and "shown" photographs of humans in social situations. A standard fMRI analysis pipeline tested ~8,000 in-brain voxels (of ~130,000 in the full scan volume) for signal change in response to the stimuli.
 
 **Why this matters**
 
@@ -499,7 +513,7 @@ Every fMRI analysis tests tens of thousands of voxels — the exact analogue of 
 
 **The companion survey**
 
-Bennett et al. (2009) also surveyed published fMRI studies: **25–40% did not report any correction** for multiple comparisons. The poster was memorable; the survey was a serious indictment.
+Bennett, Wolford & Miller (2009) audited the published fMRI literature: a substantial fraction — roughly a quarter to a third of the studies surveyed — did not report any correction for multiple comparisons. The poster was memorable; the survey was a serious indictment.
 :::
 ::::
 
@@ -524,7 +538,7 @@ The poster was presented at the Human Brain Mapping (HBM) 2009 conference and la
 
 **With correction**
 
-Apply Bonferroni or FDR — at FWER $= 0.05$ or even FDR $= 0.25$ — and the apparent signal **disappears completely**. No voxels survive.
+At Bonferroni FWER $\le 0.05$ ($p < 0.05/8064$) or FDR-corrected $q < 0.05$ — Bennett's actual reported thresholds — the apparent signal **disappears completely**. No voxels survive.
 
 **The takeaway**
 
@@ -543,7 +557,7 @@ This figure is the punchline. The red dots are statistically significant at conv
 ::: {style="font-size: 1.1em;"}
 | Approach | Genes called significant | Problem |
 |----------|:---:|---------|
-| No correction | Thousands | Hundreds of false positives — Caspi-style |
+| No correction | Thousands | ~153 expected false under the null — many real, but unknown which |
 | Bonferroni | A handful | Most real signal missed |
 :::
 
@@ -587,7 +601,7 @@ Given $m$ hypothesis tests with $p$-values $p_1, \ldots, p_m$:
 2. Find the **largest** index $k$ such that $p_{(k)} \leq \tfrac{k}{m}\,\alpha$.
 3. Reject $H_{0(i)}$ for all $i = 1, \ldots, k$.
 
-**Theorem** ([Benjamini & Hochberg, 1995](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x)). Under independence of the test statistics,
+**Theorem** ([Benjamini & Hochberg, 1995](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x)). When the null $p$-values are independent of each other and of the non-null $p$-values,
 
 $$\mathrm{FDR} \leq \frac{m_0}{m}\alpha \leq \alpha,$$
 
@@ -617,6 +631,7 @@ pvals_sim = np.sort(np.concatenate([p_null_sim, p_alt_sim]))
 alpha_bh = 0.10
 ranks = np.arange(1, m_sim + 1) / m_sim
 crossings = pvals_sim <= alpha_bh * ranks
+# `k` is the 0-indexed position of the largest crossing; rank = k + 1
 k = int(np.max(np.where(crossings)[0])) if crossings.any() else 0
 
 fig, ax = plt.subplots(figsize=(9, 3.8))
@@ -653,7 +668,7 @@ Two results address dependence:
 
 The BH bound is $\mathrm{FDR} \leq \tfrac{m_0}{m}\alpha$. When $m_0/m$ — the proportion of true nulls — is appreciably less than one, BH is conservative. [Storey (2002)](https://doi.org/10.1111/1467-9868.00346) proposed an adaptive procedure that estimates $\pi_0 = m_0/m$ from the data:
 
-$$\hat\pi_0(\lambda) = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)}, \qquad \text{typically } \lambda = 0.5.$$
+$$\hat\pi_0(\lambda) = \min\!\left(1,\ \frac{\#\{p_i > \lambda\}}{m(1-\lambda)}\right), \qquad \text{typically } \lambda = 0.5.$$
 
 The numerator counts $p$-values above $\lambda$; the denominator is the expected number of such $p$-values under the null. The ratio estimates $\pi_0$ directly from the flat region of the histogram — the same region that Storey & Tibshirani's Figure 1 highlighted with its dotted line.
 
@@ -721,6 +736,10 @@ This is the BH procedure we just developed, applied directly to the Golub data a
 
 # What a Field-Wide False Positive Looks Like {.centered}
 
+::: {style="text-align: center; font-size: 0.7em; margin-top: 1em; color: #555;"}
+Back to 5-HTTLPR: how the same multiplicity problem went undetected for fifteen years.
+:::
+
 ::: {.notes}
 The dead salmon study became a memorable cautionary tale. Now back to a case that was anything but: the case where the false-positive cost was real.
 
@@ -755,7 +774,7 @@ Publication bias. Studies that found a significant result for 5-HTTLPR were more
 
 Winner's curse. The studies that did get published — the ones that found significant results — necessarily overestimated the effect size. To cross the significance threshold with a small, noisy sample, the observed effect has to be larger than the true effect. So the early estimates of the 5-HTTLPR effect were inflated, and later studies with more realistic estimates looked like "failures to replicate."
 
-The garden of forking paths. There are many defensible choices in any analysis: which covariates to include, which subgroups to analyze, which outcome measure to use, how to define "stressful life events." Each choice is a branch point, and the analysts — without any intent to deceive — could explore different branches until they found one that produced a significant result. This isn't the same as running 12,625 explicit tests, but it has the same effect: the number of implicit tests is much larger than the number of reported tests.
+The garden of forking paths. There are many defensible choices in any analysis: which covariates to include, which subgroups to analyze, which outcome measure to use, how to define "stressful life events." Each choice is a branch point, and the analysts — without any intent to deceive — could explore different branches until they found one that produced a significant result. This isn't the same as running thousands of explicit tests, but it has the same effect: the number of implicit tests is much larger than the number of reported tests.
 
 None of this required bad intentions. The researchers who studied 5-HTTLPR were, for the most part, careful scientists who believed in their hypothesis and interpreted ambiguous evidence in its favor. That's not fraud — that's human cognition. The problem wasn't the scientists. The problem was the statistical framework, which didn't account for the scale of testing that was actually happening.
 :::
@@ -770,12 +789,12 @@ None of this required bad intentions. The researchers who studied 5-HTTLPR were,
 |--|:---:|:---:|
 | **Tests per study** | 1–few | ~1,000,000 |
 | **Correction** | Usually none | 5 × 10⁻⁸ |
-| **Depression loci found** | 0 (replicated) | 100+ |
+| **Depression loci found** | 0 (replicated) | 102 (Howard 2019) |
 
 :::
 
 ::: {.notes}
-Meanwhile, a parallel approach had been yielding real results. Genome-wide association studies, which test hundreds of thousands or millions of genetic variants and apply stringent multiple testing correction — that 5 × 10⁻⁸ threshold — had been steadily finding genetic loci associated with depression. By 2019, GWAS had identified over 100 loci. These weren't the same genes that the candidate gene studies had focused on. The two approaches — one without proper correction, one with — were studying the same biology and getting completely different answers.
+Meanwhile, a parallel approach had been yielding real results. Genome-wide association studies, which test hundreds of thousands or millions of genetic variants and apply stringent multiple testing correction — that 5 × 10⁻⁸ threshold — had been steadily finding genetic loci associated with depression. By 2019, Howard et al. had identified 102 independent loci. The loci that emerged from properly corrected genome-wide analyses largely did not include the historic candidate-gene set; a small number sit in or near serotonergic-pathway genes, but the candidate-gene literature was not a useful guide to where the genome-wide signal actually fell.
 
 The fix was known the entire time. GWAS adopted it from the beginning: test everything, correct for everything, accept the stringent thresholds. The candidate gene field tested one or a few genes per study, which seemed like it shouldn't require correction — but across the entire literature, across hundreds of studies each making dozens of analytical choices, the effective number of tests was enormous. The correction should have happened at the field level, not just the study level.
 :::

@@ -29,9 +29,9 @@ Lecture 2 turns from testing to *estimation*: from declaring genes significant t
 
 In 2003, Avshalom Caspi and colleagues [reported in *Science*](https://doi.org/10.1126/science.1083968) one of the most influential findings in modern psychiatric genetics. A variant in the serotonin transporter gene — 5-HTTLPR — appeared to predict which individuals exposed to stressful life events would go on to develop depression. The hypothesis was elegant: carriers of a low-expression allele produce less serotonin transporter protein and are, in consequence, more vulnerable to stress-induced depression. Nature and nurture, mediated by a single locus.
 
-The paper accumulated more than 8,000 citations.[^1] It launched a subfield. Hundreds of laboratories attempted to replicate or extend the finding; graduate students built dissertations on it; textbooks held it up as a paradigm of gene-environment interaction. Anyone who took a psychology or genetics course between 2005 and 2015 likely encountered it.
+The paper accumulated roughly 11,000 citations on Google Scholar by 2026.[^1] It launched a subfield. Hundreds of laboratories attempted to replicate or extend the finding; graduate students built dissertations on it; textbooks held it up as a paradigm of gene-environment interaction. Anyone who took a psychology or genetics course between 2005 and 2015 likely encountered it.
 
-[^1]: For comparison, a well-cited paper in human genetics typically attracts a few hundred citations. Eight thousand citations marks a field-defining result.
+[^1]: For comparison, a well-cited paper in human genetics typically attracts a few hundred citations. Eleven thousand citations marks a field-defining result.
 
 In 2019, [Richard Border and colleagues](https://doi.org/10.1176/appi.ajp.2018.18070881) tested the 5-HTTLPR hypothesis — together with seventeen other "candidate gene" hypotheses for depression — in samples ranging from 62,000 to 443,000 individuals. Their analysis plan was preregistered and their methodology mirrored that of the original studies. The only material difference was sample size.
 
@@ -115,7 +115,7 @@ The difficulty is that this is the wrong guarantee.
 
 Consider what the FWER actually controls: the probability of *any* false positive — even one. In a list of 500 declared significant genes, Bonferroni assures that not a single discovery is false. The threshold required to provide that assurance is correspondingly stringent, and the cost is the loss of most of the real signal.
 
-For some inferential problems, the FWER is precisely the right criterion. An astronomer announcing the detection of gravitational waves should require very strong protection against any false discovery; the discipline accordingly adopted a "five-sigma" standard, corresponding to a per-test error rate near $1/3{,}500{,}000$. The cost of a false announcement is large.
+For some inferential problems, the FWER is precisely the right criterion. An astronomer announcing the detection of gravitational waves should require very strong protection against any false discovery; the discipline accordingly adopted a "five-sigma" standard, corresponding to a two-sided per-test error rate of $\sim 6 \times 10^{-7}$ (about $1/1{,}700{,}000$, or $\sim 1/3{,}500{,}000$ one-sided). The cost of a false announcement is large.
 
 For a biologist screening thousands of genes to nominate candidates for follow-up experimentation, the inferential goal is different. The aim is not to guarantee that every gene on the list is real but to produce a *useful* list, in which most discoveries are genuine and the false-positive contamination is acceptably small. A list of 500 genes containing 25 false positives — a 5 percent rate of false discoveries — is, for most exploratory applications, fully serviceable; subsequent validation experiments will adjudicate the individual claims.
 
@@ -144,7 +144,7 @@ The FDR encodes a different inferential goal than the FWER. Bonferroni guarantee
 1. Find the largest index $k$ for which $p_{(k)} \leq \frac{k}{m}\alpha$.
 2. Reject $H_{0(1)}, H_{0(2)}, \ldots, H_{0(k)}$.
 
-The procedure has a transparent geometric interpretation. Plotting the ordered $p$-values $p_{(i)}$ against $i/m$ yields a step function that begins near zero and rises toward unity. The Benjamini–Hochberg procedure draws a straight line through the origin with slope $\alpha$ and rejects every hypothesis whose ordered $p$-value lies on or below the line, up to the largest crossing. The original theorem guarantees that, under independence of the test statistics,
+The procedure has a transparent geometric interpretation. Plotting the ordered $p$-values $p_{(i)}$ against $i/m$ yields a step function that begins near zero and rises toward unity. The Benjamini–Hochberg procedure draws a straight line through the origin with slope $\alpha$ and rejects every hypothesis whose ordered $p$-value lies on or below the line, up to the largest crossing. The original theorem guarantees that, when the null $p$-values are independent of each other and of the non-null $p$-values,
 
 $$\mathrm{FDR} \leq \frac{m_0}{m}\alpha \leq \alpha,$$
 
@@ -160,19 +160,19 @@ Applied to the Golub data at $\alpha = 0.05$, the BH procedure declares far more
 
 The factor $m_0/m$ in the BH bound is the proportion of true nulls in the experiment. When this proportion is close to one, the BH procedure is nearly tight; when it is smaller — as when many genes truly differ between groups — BH is conservative. [Storey (2002)](https://doi.org/10.1111/1467-9868.00346) proposed an adaptive procedure that estimates $\pi_0 = m_0/m$ from the data and uses the estimate to recover the additional power.
 
-The estimator exploits the histogram diagnostic. Under the null, $p$-values are uniform on $[0,1]$; the density of large $p$-values is therefore approximately uniform regardless of how many alternatives are present in the experiment. For a tuning parameter $\lambda$ (typically $\lambda = 0.5$),
+The estimator exploits the histogram diagnostic. Under the null, $p$-values are uniform on $[0,1]$; provided the alternative density is negligible above $\lambda$ (a reasonable assumption when the signal is well-separated, as in the Golub histogram), the density of large $p$-values is approximately uniform regardless of how many alternatives are present. For a tuning parameter $\lambda$ (typically $\lambda = 0.5$),
 
-$$\hat\pi_0(\lambda) = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)}.$$
+$$\hat\pi_0(\lambda) = \min\!\left(1,\ \frac{\#\{p_i > \lambda\}}{m(1-\lambda)}\right).$$
 
-The numerator counts $p$-values above $\lambda$; the denominator is the expected number of such $p$-values under the null. The R package `qvalue` automates the choice of $\lambda$.
+The numerator counts $p$-values above $\lambda$; the denominator is the expected number of such $p$-values under the null; the cap at 1 handles finite-sample cases in which the ratio happens to exceed one. The R package `qvalue` automates the choice of $\lambda$.
 
 Storey ([2003](https://doi.org/10.1214/aos/1074290335)) defined the $q$-value as the multiple-testing analogue of the $p$-value:
 
 $$q_i = \min_{t \geq p_i} \widehat{\mathrm{FDR}}(t).$$
 
-The $q$-value of test $i$ is the smallest FDR at which test $i$ would be declared significant. Operationally, it occupies the same role as a $p$-value but answers a different question: a $p$-value reports the per-test false-positive probability under the null; a $q$-value reports the expected proportion of false discoveries among rejections at least as significant as the one observed.
+The $q$-value of test $i$ is the smallest FDR at which test $i$ would be declared significant. Operationally, it occupies the same role as a $p$-value but answers a different question: a $p$-value reports the per-test false-positive probability under the null; a $q$-value reports the expected proportion of false discoveries among rejections at least as significant as the one observed. The $q$-value is the per-test face of the same BH calculation introduced above — a rank-based mapping from sorted $p$-values to estimated FDRs — repackaged into a form a reader can interpret one gene at a time.
 
-The remainder of the present lecture demonstrates what happens when no correction is applied at all.
+That toolkit is sufficient to handle the Golub data correctly. The remainder of the lecture turns to two settings in which the corresponding tools were *not* used, and to what the resulting evidence looks like when the multiplicity is ignored entirely.
 
 ---
 
@@ -188,7 +188,7 @@ Without correction for multiple comparisons, a cluster of voxels in the salmon's
 
 With standard multiple-comparisons correction, the apparent signal disappeared, as it had to: the salmon was dead.
 
-Bennett's [conference poster](https://doi.org/10.1016/S1053-8119(09)71202-9) on the experiment circulated widely, both for its memorable framing and for its substantive point. Every fMRI analysis involves thousands of voxels, each tested independently; the inferential problem is structurally identical to the one in genomics. Bennett's [accompanying survey of the fMRI literature](https://doi.org/10.1093/scan/nsp053) found that 25 to 40 percent of published studies failed to report any correction for multiple comparisons. The poster was memorable; the survey was a serious indictment.
+Bennett's [conference poster](https://doi.org/10.1016/S1053-8119(09)71202-9) on the experiment circulated widely, both for its memorable framing and for its substantive point — the salmon paper itself appeared in the *Journal of Serendipitous and Unexpected Results* in 2010. Every fMRI analysis involves thousands of voxels (Bennett's analysis was masked to ~8,000 in-brain voxels rather than the ~130,000 in the full volume), each tested independently; the inferential problem is structurally identical to the one in genomics. Bennett, [Wolford and Miller's 2009 survey of the fMRI literature](https://doi.org/10.1093/scan/nsp053) found that a substantial fraction of published studies — roughly a quarter to a third of those they audited — failed to report any correction for multiple comparisons. The poster was memorable; the survey was a serious indictment.
 
 Salmon and gene present the same problem in different domains. The Golub experiment yields 3,051 tests across genes; an fMRI study yields tens of thousands across voxels. The expression levels become blood-oxygenation contrasts, but the inferential structure is identical: many tests at a 5 percent per-test error rate, and a sufficient quantity of tests to render false positives inevitable.
 
@@ -208,7 +208,7 @@ The field nevertheless had reasons to persist. The biology was plausible: seroto
 
 In 2019, [Border et al.](https://doi.org/10.1176/appi.ajp.2018.18070881) settled the question. Eighteen candidate-gene hypotheses for depression, including 5-HTTLPR, were tested in samples ranging from tens to hundreds of thousands of individuals, with preregistered analysis plans and consistent methodology. None of the eighteen replicated.
 
-In parallel, a different approach to the genetics of depression had been yielding genuine results. Genome-wide association studies (GWAS), which test on the order of a million variants and apply the stringent $5 \times 10^{-8}$ threshold, had identified more than [100 genetic loci associated with depression by 2019](https://doi.org/10.1038/s41593-018-0326-7). The loci that emerged from properly corrected analyses bore essentially no relation to those identified by the uncorrected candidate-gene literature. Two approaches studying the same biology arrived at completely different answers, and the source of the divergence was the multiple-testing correction.
+In parallel, a different approach to the genetics of depression had been yielding genuine results. Genome-wide association studies (GWAS), which test on the order of a million variants and apply the stringent $5 \times 10^{-8}$ threshold, had identified 102 independent genetic loci associated with depression by 2019 ([Howard et al., 2019, *Nature Neuroscience*](https://doi.org/10.1038/s41593-018-0326-7)). The loci that emerged from properly corrected genome-wide analyses largely did not include the historic candidate-gene set (a small number of GWAS hits sit in or near serotonergic-pathway genes, but the candidate-gene literature was not a useful guide to where the genome-wide signal actually fell). The two approaches, studying the same biology, produced substantially divergent gene lists, and the principal source of the divergence was the multiple-testing correction.
 
 Three reinforcing mechanisms allowed the false positives to persist.
 
