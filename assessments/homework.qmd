@@ -1,7 +1,7 @@
 ---
 title: "Homework: Day 1 → Day 2"
 subtitle: "Due at the Start of Day 2"
-date: "Estimated time: 1.5 hours"
+date: "Estimated time: 3–3.5 hours"
 format:
   html:
     toc: true
@@ -23,8 +23,8 @@ This page is the readable web reference.
 This homework consolidates Day 1 material and bridges to Day 2. It maps onto the Day-1 structure:
 
 - **Q1 — Multiple Testing Concepts (LO1, LO3)**. Exercises **Lecture 1** (hypothesis testing: Bonferroni / FWER, BH / FDR, $q$-values) and includes an **AI explanation + critique** exercise.
-- **Q2 — FDR in Practice (LO1, LO3)**. Connects both Day-1 lectures: BH-adjusted $p$-values from **Lecture 1**; empirical-Bayes variance shrinkage (the moderated $t$-statistic, the idea behind `limma`'s `eBayes`) and $\hat\pi_0$ estimation from **Lecture 2**. **You will implement the moderated-$t$ statistic from scratch in Python** in roughly 15 lines of numpy + scipy — no R, no Bioconductor. **All three sub-parts ask you to use AI for code generation** and to critique what comes back.
-- **Q3 — Evaluating Analysis Output (LO3)**. Exercises the critical-evaluation thread from both lectures, with explicit **you-vs-AI comparison** exercises in writing specifications, debugging, and code review.
+- **Q2 — FDR in Practice (LO1, LO3)**. Connects both Day-1 lectures: BH-adjusted $p$-values from **Lecture 1**; empirical-Bayes variance shrinkage (the moderated $t$-statistic, the idea behind `limma`'s `eBayes`) and $\hat\pi_0$ estimation from **Lecture 2**. **You will implement a Smyth-style moderated-$t$ statistic from scratch in Python** in roughly 15 lines of numpy + scipy — no R, no Bioconductor. **All three sub-parts ask you to use AI for code generation** and to critique what comes back against an explicit checklist.
+- **Q3 — Evaluating Analysis Output, and a Day-2 bridge (LO3)** — five sub-parts, three of which include you-vs-AI comparisons: writing specifications, debugging, and a true in-context multi-turn code review. Concludes with a short PCA-on-Golub preview to prime Lecture 3 (dimension reduction) and Lecture 4 (penalized regression).
 
 **AI integration is required.** Every question has at least one sub-part where you direct an AI assistant, paste its output, and evaluate it against named criteria. Use any of: the [UMass campus GenAI platform](https://www.umass.edu/it/genai/platform), Claude, ChatGPT, or another assistant of your choice. Note which AI you used for each prompt — different models behave differently, and the differences are themselves part of the lesson.
 
@@ -38,15 +38,15 @@ Conceptual and interpretation questions must reflect your own understanding. The
 
 A proteomics experiment measures the abundance of $p = 5{,}000$ proteins in $n = 30$ tissue samples (15 tumor, 15 normal). For each protein, a two-sample $t$-test is performed.
 
-**(a)** Under the global null (no protein is differentially abundant), how many proteins would you expect to reject at $\alpha = 0.05$ without any correction?
+**Q1.1.** Under the global null (no protein is differentially abundant), how many proteins would you expect to reject at $\alpha = 0.05$ without any correction?
 
-**(b)** The Bonferroni-corrected threshold is $\alpha / m$. Compute this threshold. A protein with a "real" effect has a $p$-value of $3 \times 10^{-4}$. Would it survive Bonferroni correction?
+**Q1.2.** The Bonferroni-corrected threshold is $\alpha / m$. Compute this threshold. A protein with a "real" effect has a $p$-value of $3 \times 10^{-4}$. Would it survive Bonferroni correction?
 
-**(c)** You apply the BH procedure at FDR $= 0.10$ and get 120 rejections. Give an interpretation of this result in plain language that a biologist would understand.
+**Q1.3.** You apply the BH procedure at FDR $= 0.10$ and get 120 rejections. Give an interpretation of this result in plain language that a biologist would understand.
 
-**(d)** Your collaborator says "We found 120 significant proteins." A reviewer replies "But 12 of those are probably false positives!" Is the reviewer being unreasonable? Explain.
+**Q1.4.** Your collaborator says "We found 120 significant proteins." A reviewer replies "But 12 of those are probably false positives!" Is the reviewer being unreasonable? Explain. *(Rubric note: BH controls the FDR* in expectation *over the procedure — the realized number of false discoveries in any one experiment will fluctuate around $\mathrm{FDR}\cdot R = 12$. Either "the reviewer's number is the right order of magnitude" or "the reviewer is treating an expectation as a per-experiment guarantee" can earn full credit, provided the distinction is named.)*
 
-**(e) AI explanation + critique.** Ask an AI assistant the following prompt:
+**Q1.5. AI explanation + critique.** Ask an AI assistant the following prompt:
 
 > "Explain the difference between FWER (Bonferroni-style) and FDR (Benjamini–Hochberg-style) control to a wet-lab biologist who has never taken a statistics course. Use the analogy of finding stars in a noisy telescope image. Three short paragraphs at most."
 
@@ -60,31 +60,61 @@ Paste the AI's response. Then critique it against five criteria: (i) Does it def
 
 Using the Golub dataset (introduced in Lecture 1 and used in Labs 1 and 2), perform the following analysis. You should use AI to write the Python code, but evaluate its correctness and interpret the results yourself.
 
-**(a) BH-adjusted p-values via hand-rolled moderated $t$-statistics.** Implement Smyth's moderated $t$-statistic from scratch in Python (not by calling an R library), then BH-adjust. The moderated $t$-statistic is
+**Q2.a — BH-adjusted p-values via hand-rolled moderated $t$-statistics.** Implement a Smyth-style moderated $t$-statistic from scratch in Python (not by calling an R library), then BH-adjust. The moderated $t$-statistic is
 
 $$\tilde t_g = \frac{\bar y_{g,A} - \bar y_{g,B}}{\tilde s_g\, \sqrt{1/n_A + 1/n_B}},\quad \tilde s_g^2 = \frac{d_0 s_0^2 + d_g s_g^2}{d_0 + d_g}$$
 
-with $d_g = n_A + n_B - 2$ and prior hyperparameters $(d_0 = 4,\, s_0^2 = \exp(\overline{\log s_g^2}))$ as a simple heuristic. Reference distribution: $t_{d_0 + d_g}$.
+with $d_g = n_A + n_B - 2$ and prior hyperparameters fixed by a simple heuristic, $d_0 = 4$ and $s_0^2 = \exp(\overline{\log s_g^2})$. *Smyth's full procedure ([Smyth, 2004](https://doi.org/10.2202/1544-6115.1027)) estimates $(d_0, s_0^2)$ by trigamma matching to the empirical distribution of gene-level log-variances; the geometric-mean choice used here is a pedagogical simplification that gives qualitatively similar shrinkage in roughly 15 lines of numpy + scipy.* Reference distribution: $t_{d_0 + d_g}$.
 
 Suggested prompt (paste-ready, with Python-specific format directive):
 
-> "Reply with a single Python code block (no prose, no .docx file). Given pandas DataFrames `expr` (3,051 genes × 72 samples) and `meta` (sample_id, subtype = 'ALL' or 'AML'), implement Smyth's moderated $t$-statistic from scratch: compute per-gene pooled sample variance with $d_g = n_A + n_B - 2$ degrees of freedom, fit an inverse-chi-squared prior with $d_0 = 4$ and $s_0^2 = \exp(\text{mean log }s_g^2)$, compute moderated variances and moderated $t$-statistics, get two-sided p-values from a $t$-distribution with $d_0 + d_g$ dof, then BH-adjust with `statsmodels.stats.multitest.multipletests(method='fdr_bh')`. Print counts at FDR thresholds 0.01, 0.05, 0.10. Use numpy, scipy.stats, and statsmodels only."
+> "Reply with a single Python code block (no prose, no .docx file — just runnable code I can paste into a Colab cell). Given pandas DataFrames `expr` (rows = 3,051 genes; columns = 72 samples; column order matches `meta['sample_id']`) and `meta` (columns `sample_id` and `subtype` ∈ {'ALL', 'AML'}), implement a Smyth-style moderated $t$-statistic from scratch: compute per-gene pooled sample variance with $d_g = n_A + n_B - 2$ degrees of freedom (note rows are genes, columns are samples — split by `meta['subtype']` to form the two groups), fix the prior hyperparameters $d_0 = 4$ and $s_0^2 = \exp(\text{mean log }s_g^2)$, compute moderated variances $\tilde s_g^2 = (d_0 s_0^2 + d_g s_g^2)/(d_0 + d_g)$ and moderated $t$-statistics, get two-sided p-values from a $t$-distribution with $d_0 + d_g$ degrees of freedom, then BH-adjust via `statsmodels.stats.multitest.multipletests(method='fdr_bh')`. Print the counts at FDR thresholds 0.01, 0.05, and 0.10. Use numpy, scipy.stats, and statsmodels only."
 
-Include the prompt you used and note whether the AI produced the moderated-$t$ implementation in one shot, or whether you had to direct it.
+Include the prompt you used and note whether the AI produced the moderated-$t$ implementation in one shot, or whether you had to direct it. **Then critique the AI's code against the following checklist:**
 
-**(b) Estimate $\hat\pi_0$ using Storey's formula.** $\hat\pi_0(\lambda) = \#\{p_i > \lambda\}/(m(1-\lambda))$, $\lambda = 0.5$. Same recipe as Lab 2 cell 7, applied to the moderated $p$-values from (a).
+| Criterion | Pass / Fail / Partial | Notes |
+|---|---|---|
+| Did the AI orient the matrix correctly (rows = genes, columns = samples)? | | |
+| Did the AI use $d_0 + d_g$ degrees of freedom for the reference $t$ (not just $d_g$)? | | |
+| Did the AI use a **two-sided** p-value? | | |
+| Did the AI use $s_0^2 = \exp(\overline{\log s_g^2})$ (*geometric* mean of variances), not $\overline{s_g^2}$ (arithmetic mean)? | | |
+| Did the AI compute two-sided p-values with `2 * stats.t.sf(|t|, df=d_0+d_g)` (rather than `1 - cdf`, which can underflow to 0 for large \|t\|)? | | |
+| Did the AI call `multipletests(method='fdr_bh')` rather than another method (e.g. `bonferroni`, `fdr_by`)? | | |
+| Did the AI add any silent fallback (e.g. clipping zero-variance genes) that could distort the test? | | |
+
+**Q2.b — Estimate $\hat\pi_0$ using Storey's formula.** $\hat\pi_0(\lambda) = \#\{p_i > \lambda\}/(m(1-\lambda))$, $\lambda = 0.5$. Same recipe as Lab 2 cell 7, applied to the moderated $p$-values from Q2.a.
+
+*Sensitivity caveat.* The single-$\lambda$ form is a pedagogical shortcut. Storey's original paper recommends estimating $\hat\pi_0(\lambda)$ across a grid of $\lambda$ values, smoothing the curve, and reading off the limit as $\lambda \to 1$. The fixed $\lambda = 0.5$ used here can be *unstable* on datasets like Golub where alternatives concentrate sharply near $p = 0$ — your $\hat\pi_0$ may come out closer to 1 than the visible spike at zero would suggest.
+
+Suggested prompt (deliberately does *not* tell the AI to cap at 1 — that's what the checklist tests):
+
+> "Reply with a single Python code block (no prose, no .docx file). Given a numpy array `p_mod` of raw $p$-values from the moderated-$t$ analysis, compute Storey's $\hat\pi_0(\lambda)$ at $\lambda = 0.5$ using the formula $\hat\pi_0 = \#\{p_i > \lambda\} / (m(1-\lambda))$. Print it to three decimal places with a one-line interpretation, using the printed number. Do not invent or hallucinate numbers — only print what the formula returns."
+
+**Critique checklist for Q2.b:**
+
+| Criterion | Pass / Fail / Partial | Notes |
+|---|---|---|
+| Did the AI report $\hat\pi_0$ greater than 1.0 (indicating the raw formula was applied without any cap)? If yes, the AI matched the prompt; if it silently capped, note that — both behaviors are defensible if labeled. | | |
+| Did the AI use $m \cdot (1-\lambda)$ in the denominator (not $m$ alone, which would inflate to $2\hat\pi_0$)? | | |
+| Did the AI use $\lambda = 0.5$ (not the default from some other library or a different $\lambda$)? | | |
+| Did the AI's interpretation match the printed number (no hallucinated percentage)? | | |
+
+**Q2.c — Annotated p-value histogram.** Make a matplotlib histogram of the moderated $p$-values from Q2.a. Add a horizontal dashed reference line at the uniform-null density (height 1), a horizontal dotted line at $\hat\pi_0$, and two shaded regions: 0–0.1 (mostly true alternatives at large $\pi_1$) and 0.5–1.0 (roughly uniform null).
 
 Suggested prompt:
 
-> "Reply with a single Python code block (no prose, no .docx file). Given a numpy array `p_mod` of raw $p$-values from the moderated-$t$ analysis, compute Storey's $\hat\pi_0(\lambda)$ at $\lambda = 0.5$, print it to three decimal places with a one-line interpretation. Do not invent or hallucinate numbers — only print what the formula returns."
+> "Reply with a single Python code block (no prose, no .docx file). Given a numpy array `p_mod` of moderated p-values from the Golub data and Storey's `pi0_hat`, produce a matplotlib histogram with 50 bins (density scaled), overlay a horizontal dashed line at density 1 labelled 'uniform-null density', overlay a horizontal dotted line at height `pi0_hat` labelled 'estimated null bin density (π̂₀)', and `axvspan(0, 0.1)` + `axvspan(0.5, 1.0)` to shade the small-$p$ region (where true alternatives concentrate) and the uniform-null region. Title the figure, label both axes, include a legend."
 
-**(c) Annotated p-value histogram.** Make a matplotlib histogram of the moderated $p$-values from (a). Add a horizontal dashed reference line at the uniform-null density (height 1), a horizontal dotted line at $\hat\pi_0$, and two shaded regions: 0–0.1 (alternatives) and 0.5–1.0 (uniform null).
+**Critique checklist for Q2.c:**
 
-Suggested prompt:
+| Criterion | Pass / Fail / Partial | Notes |
+|---|---|---|
+| Did the AI use `density=True` (not raw counts)? | | |
+| Did the AI label the horizontal dotted line as $\hat\pi_0$ (the null *bin density*, not a curve $f_0$)? | | |
+| Did the AI keep the axis labels and legend self-contained (readable without the prompt)? | | |
+| Did the AI use a consistent number of bins (50) so the density scale is interpretable? | | |
 
-> "Reply with a single Python code block (no prose, no .docx file). Given a numpy array `p_mod` of moderated p-values from the Golub data and Storey's `pi0_hat`, produce a matplotlib histogram with 50 bins (density scaled), overlay a horizontal dashed line at density 1, overlay a horizontal dotted line at `pi0_hat`, and `axvspan(0, 0.1)` + `axvspan(0.5, 1.0)` to shade the spike-of-alternatives and uniform-null regions. Title the figure, label both axes, include a legend."
-
-For each of (a), (b), and (c): paste the AI's code, note any corrections you had to make, and include a one-paragraph interpretation of the results in your own words.
+For each of Q2.a, Q2.b, and Q2.c: paste the AI's code, complete the critique checklist, note any corrections you had to make, and include a one-paragraph interpretation of the results in your own words.
 
 ---
 
@@ -101,29 +131,39 @@ Explain what makes Specification B better.
 
 **(b)** You read (in a paper or AI output) the claim: "Gene XYZ promotes cell proliferation in breast cancer through the PI3K/AKT pathway (Smith et al., 2019)." Describe the steps you would take to verify this before including it in your own work.
 
-**(c)** Describe one specific error you encountered during today's labs—whether in AI-generated code, your own code, or a collaborator's analysis. What was the error? How did you catch it? What statistical knowledge was required to recognize it?
+**(c)** Describe one specific error you encountered during Day 1's labs — whether in AI-generated code, your own code, or a collaborator's analysis. What was the error? How did you catch it? What statistical knowledge was required to recognize it?
 
 Suggested AI prompt for follow-up (paste-ready, with Python-specific format directive):
 
 > "Reply with a single Python code block (no prose, no .docx file). Here is a snippet of analysis code: [paste your snippet]. Identify the most likely statistical error and write a corrected version of the snippet. If the original is correct, return the same code unchanged with a one-line comment confirming this."
 
-**(d) A short review — three-turn AI exchange.** *This is the multi-turn AI exercise required for this homework.* You receive a complete differential expression analysis from a collaborator. It uses raw two-sample $t$-tests with BH correction on a microarray dataset with 72 samples.
+**(d) A short review — three-turn AI exchange (true multi-turn).** *This is the multi-turn AI exercise required for this homework.* You receive a complete differential expression analysis from a collaborator. It uses raw two-sample $t$-tests with BH correction on a microarray dataset with 72 samples.
 
-- **Turn 1 (your review).** Write a 3–4-sentence review describing what's adequate and what should be changed, and why. *(Hint: connect this to Lecture 2's argument that empirical-Bayes variance shrinkage — the moderated $t$-statistic — is preferred over raw $t$-tests when $n$ is small. The [Decision Guide](../syllabus/decision-guide.qmd) summarizes the recommended methods.)*
+**The point of "multi-turn" is that turns 2 and 3 are sent in the same conversation context, so the AI can build on (and revise) its earlier output. Do not start a fresh chat between turns.**
 
-- **Turn 2 (AI's review of the same scenario).** Prompt: *"Reply in three to four sentences only (no .docx file). A collaborator submitted a differential expression analysis on a microarray dataset with $n = 72$ samples using raw two-sample $t$-tests with Benjamini–Hochberg FDR correction. Write a brief critical review explaining what is adequate about this approach and what should be changed, and why."*
+- **Turn 1 (your review).** Write a 3–4-sentence review describing what's adequate and what should be changed, and why. *(Hint: connect this to Lecture 2's argument that empirical-Bayes variance shrinkage — the moderated $t$-statistic — is preferred over raw $t$-tests when $n$ is small. The [Decision Guide](https://pflahert.github.io/hd-stats-workshop/syllabus/decision-guide.html) summarizes the recommended methods.)*
 
-- **Turn 3 (AI critiques *your* review).** Paste your Turn-1 review into the prompt: *"Reply in three to four sentences only (no .docx file). I wrote the following review of a colleague's differential expression analysis: [paste your Turn-1 review]. Critique my review for completeness, accuracy, and tone. Did I miss any important methodological issues that a statistical reviewer should flag? Did I overstate any concern?"*
+- **Turn 2 (open an AI conversation; ask the AI for its own review of the same scenario).** Prompt:
 
-- **Final synthesis.** Combine the best points from all three turns into a single 3–5-sentence review you would actually send to the collaborator. State explicitly which points came from you, which from the AI's review of the scenario, and which came from the AI's critique of your review.
+  > *"Reply in three to four sentences only (no .docx file). A collaborator submitted a differential expression analysis on a microarray dataset with $n = 72$ samples using raw two-sample $t$-tests with Benjamini–Hochberg FDR correction. Write a brief critical review explaining what is adequate about this approach and what should be changed, and why."*
+
+- **Turn 3 (in the same conversation, give the AI your Turn-1 review and ask it to revise by incorporating any points it missed).** Prompt:
+
+  > *"Here is the review I wrote myself for the same scenario: [paste your Turn-1 review verbatim]. Compare my review to the one you wrote in your previous response. List any methodological issues I raised that you did **not** raise, and any that you raised that I did **not**. Then produce a revised version of your review that incorporates the best points from both — you may keep parts of your earlier review unchanged if you still believe them, or revise wherever I caught something you missed. Three to four sentences for the revised review. No .docx file."*
+
+- **Final synthesis (your work).** Combine the best points from all three turns into a single 3–5-sentence review you would actually send to the collaborator. State explicitly which points came from you, which came from the AI's Turn-2 review, and which came from the AI's Turn-3 reconciliation. Note any case where Turn 3 changed the AI's view from Turn 2 — that is the value of staying in the same conversation context.
 
 - **Reflection.** What did this three-turn exchange teach you about using AI as a reviewer? Were the AI's contributions complementary to your own, or did they substantially overlap? Did the AI catch issues you missed, or did you catch issues the AI missed?
 
 ---
 
+**(e) Bridge to Day 2.** Before Day 2, run a quick PCA preview on the Golub matrix (rows = genes, columns = samples). Center and scale each gene, fit `sklearn.decomposition.PCA(n_components=10)` on the **transposed** matrix (samples × genes), and report (i) the cumulative variance explained by PC1–PC10 and (ii) one sentence on what the $(n,p)$ constraint of this dataset implies for the LASSO / ridge / elastic-net analyses you will perform in Lab 4. *(No AI required for this part — you've already exercised PCA prompts in Day 1; this is just to prime the Day 2 lectures.)*
+
+---
+
 ## Submission
 
-Bring your written answers and code output (for Q2) to Day 2. Be prepared to reference your answers during Lecture 3 and Lecture 4 discussions.
+Submit your completed `homework.ipynb` (via `File → Download → Download .ipynb` in Colab) to the workshop Harmony site **before the start of Day 2**, *and* bring a printed or on-screen copy of your Q2 code output and Q3(d) synthesis to Day 2 — we will reference your answers during the Lecture 3 and Lecture 4 discussions.
 
 ### Assessment Criteria
 

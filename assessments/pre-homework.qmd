@@ -20,9 +20,20 @@ This page is the readable web reference. Type your answers in the Colab notebook
 
 ## Purpose
 
-This pre-homework ensures everyone starts Day 1 with a shared foundation in hypothesis testing and $p$-values. It also introduces the multiple testing problem and includes a short exercise using AI tools.
+This pre-homework ensures everyone starts Day 1 with a shared foundation in hypothesis testing and $p$-values. It also introduces the multiple testing problem and gives you practice working *conversationally* with an AI assistant.
 
 **Learning Outcomes**: LO1, LO3
+
+::: {.callout-note}
+## How this notebook uses AI
+
+This notebook integrates AI at several steps, not just at the end. Two kinds of AI exercises appear:
+
+- **Single-shot critiques** — you prompt, paste the response, and evaluate it against a named checklist (Pass / Fail / Partial + Notes).
+- **Multi-turn conversations** — you prompt, critique the response, write a follow-up prompt that addresses your critique, paste the refined response, and write a final assessment. *At least one multi-turn exercise per notebook is required.* In this notebook, Q3.1 is the multi-turn exercise — Turns 2 and 3 must be sent in the same chat session so the AI can revise its earlier answer.
+
+Use any AI assistant (the [UMass campus GenAI platform](https://www.umass.edu/it/genai/platform), Claude, ChatGPT, or another). Note which AI you used for each prompt — different models behave differently, and the differences are part of the lesson.
+:::
 
 ---
 
@@ -44,15 +55,17 @@ Review the basics of hypothesis testing from your introductory statistics course
 (b) At significance level $\alpha = 0.05$, do they reject $H_0$?
 (c) The $p$-value is NOT the probability that $H_0$ is true. Explain why not, in one or two sentences.
 
-**Q1.3**: If you perform a test at $\alpha = 0.05$ and the null hypothesis is actually true, what is the probability of a **false positive**? If you perform 20 such independent tests (all with true nulls), what is the probability of getting at least one false positive?
+**Q1.3**: If you perform a test at $\alpha = 0.05$ and the null hypothesis is actually true, what is the probability of a **false positive**?\* If you perform 20 such independent tests (all with true nulls), what is the probability of getting at least one false positive?
+
+\* *Exactly $\alpha$ for tests with continuous null distributions (the case here for a $t$-test on continuous data); $\le \alpha$ for discrete tests.*
 
 *Hint*: $P(\text{at least one}) = 1 - P(\text{none}) = 1 - (1 - 0.05)^{20}$.
 
 **Q1.4 — AI simulation check.** Ask an AI assistant to verify Q1.3 by Monte Carlo simulation. Use this prompt:
 
-> "Reply with a single Python code block (no prose, no .docx file — just runnable code I can paste into a Colab cell). Verify by Monte Carlo simulation: if I run 20 independent two-sample $t$-tests on data drawn from the same Normal distribution (so the null is true for all 20), what is the probability that at least one test produces a $p$-value below 0.05? Use 10,000 replicates with `numpy.random.seed(2026)`. Compare the simulation estimate to the analytical formula $1 - (1-0.05)^{20}$ and print both. Use `numpy` and `scipy.stats`."
+> "Reply with a single Python code block (no prose, no .docx file — just runnable code I can paste into a Colab cell). Verify by Monte Carlo simulation: if I run 20 independent two-sample Welch $t$-tests (`scipy.stats.ttest_ind(..., equal_var=False)`) on data drawn from the same Normal distribution (so the null is true for all 20), what is the probability that at least one test produces a $p$-value below 0.05? Use 10,000 replicates with `numpy.random.seed(2026)`. Compare the simulation estimate to the analytical formula $1 - (1-0.05)^{20}$ and print both, labeled. Use `numpy` and `scipy.stats` only."
 
-Paste the AI's code in the Colab notebook and run it. Then critique: did the AI set the seed, use 10,000 replicates, print both the simulation estimate and the analytical formula, and are they within ~1% of each other?
+Paste the AI's code in the Colab notebook and run it. In the notebook, complete a critique table (Pass / Fail / Partial + Notes): did the AI set the seed? use 10,000 replicates? call `ttest_ind` with `equal_var=False` (Welch)? print both numbers? are they within ~1% of each other?
 
 ---
 
@@ -64,9 +77,9 @@ Imagine you are a genomics researcher. You have gene expression data for 10,000 
 
 **Q2.1**: If none of the 10,000 genes are truly associated with the disease, how many genes would you expect to have $p < 0.05$ by chance alone?
 
-**Q2.2**: Now suppose 100 of the 10,000 genes are truly associated. The remaining 9,900 null genes still produce approximately $9{,}900 \times 0.05 \approx 495$ false positives, plus some additional true positives. If you report all genes with $p < 0.05$ as "significant," roughly what fraction of your reported genes would be false positives?
+**Q2.2**: Now suppose 100 of the 10,000 genes are truly associated, and you have 80% power to detect them (so you correctly reject $H_0$ for $\approx 80$ of those 100). The remaining 9,900 null genes still produce approximately $9{,}900 \times 0.05 \approx 495$ false positives. If you report all genes with $p < 0.05$ as "significant," roughly what fraction of your reported genes would be false positives? *Hint*: total reported $\approx 80 + 495 = 575$; false positives $\approx 495$.
 
-**Q2.3**: Suggest at least one approach to deal with this problem. You don't need to know the formal name—just describe the idea intuitively.
+**Q2.3**: Suggest at least one approach to deal with this problem. You don't need to know the formal name — just describe the idea intuitively.
 
 ---
 
@@ -74,116 +87,42 @@ Imagine you are a genomics researcher. You have gene expression data for 10,000 
 
 ### Q3.1 — Multi-turn: test the AI on something you know
 
-*This is the multi-turn AI exercise required for this notebook.* Three turns: the AI's first answer, your critique, and a follow-up prompt that asks the AI to fix the specific weaknesses you flagged.
+*This is the multi-turn AI exercise required for this notebook.* **Three turns of model output in the same chat session** so the AI can build on (and revise) its earlier answer — *don't start a fresh conversation between turns*.
 
 **Turn 1 — initial prompt.** Ask the AI:
 
 > "What is a $p$-value? Explain it in two sentences."
 
-Paste the response. Then critique it against five classic mistakes:
+In the Colab notebook, paste the response and complete a Pass / Fail / Partial critique against five classic mistakes (does it say "$P(H_0\text{ true})$"? "$P(\text{chance})$"? does it condition on $H_0$ explicitly? does it use the *as-extreme-or-more-extreme* phrasing? does it disambiguate one-sided vs two-sided?).
 
-- Says "the $p$-value is the probability that the null hypothesis is true" (wrong).
-- Says "the $p$-value is the probability the data are due to chance" (wrong; conflates likelihood with posterior).
-- Skips the conditioning on $H_0$ ("if $H_0$ were true …" is the right framing).
-- Skips the *as-extreme-or-more-extreme* phrasing.
-- Confuses one-sided vs. two-sided.
+**Turn 2 — follow-up prompt that addresses your critique.** *In the same chat session*, send a prompt that names the specific failure you flagged in your own words. Example: *"Your definition implied that the $p$-value is the probability that $H_0$ is true. That's a common mistake. Rewrite the definition correctly: it should be a probability under the null, of observing a test statistic at least as extreme as the one observed. Two sentences again."*
 
-If the Turn-1 response is already correct on all five, write a one-sentence assessment and stop. Otherwise, proceed to Turn 2.
+**Turn 3 — make it usable.** In the same chat session, ask the AI to produce a one-sentence version you could paste into a methods paragraph for a paper, with conditioning on $H_0$ and "as extreme or more extreme" included.
 
-**Turn 2 — follow-up prompt that addresses your critique.** Write a follow-up prompt that asks the AI to correct the specific issue(s) you flagged. For example: *"Your definition implied that the $p$-value is the probability that $H_0$ is true. That's a common mistake. Rewrite the definition correctly: it should be a probability under the null, of observing a test statistic at least as extreme as the one observed. Two sentences again."*
+Final assessment: did the Turn-3 sentence actually correct the issues from Turn 1, or did the AI quietly reintroduce the original error?
 
-Paste the AI's revised response. Final assessment: did Turn 2 actually fix the issue? Is it now usable in a methods section?
+**Q3.2** — Ask the AI a harder question (single-shot):
 
-**Q3.2**: Now ask the AI a question where it's more likely to make a mistake:
+> "Reply in two sentences only (plain text, no .docx file). I ran 10,000 $t$-tests on gene expression data and found 600 genes with $p < 0.05$. I corrected with Bonferroni and now only 15 genes are significant. A reviewer says I should use FDR instead of Bonferroni. Explain why the reviewer might be right."
 
-> "I ran 10,000 $t$-tests on gene expression data and found 600 genes with $p < 0.05$. I corrected with Bonferroni and now only 15 genes are significant. A reviewer says I should use FDR instead of Bonferroni. Write 2 sentences explaining why the reviewer might be right."
+In the Colab notebook, paste the response and complete a Pass / Fail / Partial critique: did the AI distinguish FWER from FDR correctly? did it explain why FDR is more appropriate for discovery (controls a *fraction*, not a probability)? did it avoid the common error "FDR is the probability that a finding is false"? did it stay within two sentences?
 
-Evaluate:
+**Q3.3** — Ask the AI to write code (paste-ready, with Python format directive and seeding):
 
-- Did the AI correctly explain the difference between FWER and FDR?
-- Did it explain why FDR is more appropriate for discovery?
-- Did it get anything wrong or leave anything important out?
+> "Reply with a single Python code block (no prose, no .docx file — just runnable code I can paste into a Colab cell). Set `rng = numpy.random.default_rng(2026)`. Use `rng` to: (1) generate 1000 $p$-values from a Uniform(0, 1) distribution and plot their histogram; (2) generate 1000 $p$-values where 950 are Uniform(0, 1) and 50 are draws from a Beta(0.1, 1) distribution via `scipy.stats.beta.rvs(a=0.1, b=1, size=50, random_state=rng)`. Plot the two histograms side by side on a single matplotlib figure with shared x-axis. Label axes, add titles, and use 50 bins each. Use `numpy`, `scipy.stats`, and `matplotlib.pyplot` only."
 
-```
-AI's response:
-
-Your evaluation:
-```
-
-**Q3.3**: Ask the AI to write code (paste-ready, with Python format directive):
-
-> "Reply with a single Python code block (no prose, no .docx file — just runnable code I can paste into a Colab cell). Generate 1000 $p$-values from a uniform distribution and make a histogram. Then generate 1000 $p$-values where 950 are uniform and 50 are from `scipy.stats.beta(0.1, 1)`. Make a histogram of each. Use matplotlib."
-
-Run the code. Did it work? If not, what did you fix?
-
-```{python}
-#| label: ai-code-exercise
-#| eval: false
-# PASTE AI-GENERATED CODE HERE
-```
-
-```
-Did it work on the first try?
-If not, what did you fix?
-```
+In the Colab notebook, paste the AI-generated code, run it, and complete a Pass / Fail / Partial critique: did the AI use `default_rng(2026)`? produce *two* histograms? use the correct 950 + 50 mixture proportions? call `scipy.stats.beta.rvs(a=0.1, b=1, size=50, random_state=rng)` (a *callable* on the frozen distribution, not just an instantiation)? label axes?
 
 ---
 
 ## Part 4: Software Check (10 min)
 
-Ensure you have R and Python installed with the required packages.
+The workshop runs entirely in Python via Google Colab — **you do not need R for any part of this workshop**. The notebook's Python software-check cell confirms that the required packages are available; in Colab almost everything is preinstalled.
 
-#### R
-
-```r
-#| label: software-check-r
-#| eval: false
-cat("R version:", R.version.string, "\n")
-
-packages <- c("tidyverse", "ggplot2", "glmnet", "Rtsne", "uwot", "pheatmap")
-for (pkg in packages) {
-  if (requireNamespace(pkg, quietly = TRUE)) {
-    cat(pkg, "OK\n")
-  } else {
-    cat(pkg, "MISSING — install with: install.packages('", pkg, "')\n")
-  }
-}
-
-# Bioconductor packages
-bioc_packages <- c("limma", "qvalue", "ALL")
-for (pkg in bioc_packages) {
-  if (requireNamespace(pkg, quietly = TRUE)) {
-    cat(pkg, "OK\n")
-  } else {
-    cat(pkg, "MISSING — install with: BiocManager::install('", pkg, "')\n")
-  }
-}
-```
-
-#### Python
-
-```python
-#| label: software-check-py
-#| eval: false
-import sys
-print(f"Python {sys.version}")
-
-packages = ["numpy", "scipy", "pandas", "sklearn", "matplotlib",
-            "seaborn", "statsmodels", "umap"]
-for pkg in packages:
-    try:
-        __import__(pkg)
-        print(f"{pkg} OK")
-    except ImportError:
-        pip_names = {"sklearn": "scikit-learn", "umap": "umap-learn"}
-        install_name = pip_names.get(pkg, pkg)
-        print(f"{pkg} MISSING — install with: pip install {install_name}")
-```
-
-Also verify you have access to the [**UMass campus GenAI platform**](https://www.umass.edu/it/genai/platform) and can paste code into it and receive responses.
+Verify you have access to the [**UMass campus GenAI platform**](https://www.umass.edu/it/genai/platform) (or Claude / ChatGPT) and can paste code into it and receive responses. The labs and the homework make heavy use of AI prompts, and you should know which platform you'll use before Day 1.
 
 ---
 
 ## Submission
 
-Bring your written answers and code output to Day 1. We will briefly discuss the answers at the start of Lecture 1.
+Submit your completed `pre-homework.ipynb` (`File → Download → Download .ipynb` in Colab) to the workshop Harmony site before the start of Day 1. We will briefly discuss the answers at the start of Lecture 1.
